@@ -84,6 +84,18 @@ const investmentTiers = [
   },
 ];
 
+type InvestmentTier = (typeof investmentTiers)[number];
+type InvestmentPlan = {
+  amount: number;
+  annualReturn: number;
+  busRemaining: number;
+  minimumAnnualReturn: number;
+  monthlyMinimumReturn: number;
+  monthlyReturn: number;
+  quota: number;
+  tier: InvestmentTier;
+};
+
 const monthlyReturns = [
   { month: "Jan", value: 83333, status: "Pago", pulse: 72 },
   { month: "Fev", value: 83333, status: "Pago", pulse: 78 },
@@ -192,11 +204,39 @@ function clampInvestment(value: number) {
   return Math.min(BUS_PRICE, Math.max(MIN_INVESTMENT, value));
 }
 
+function normalizeInvestment(value: number) {
+  const clamped = clampInvestment(value);
+  return Math.min(
+    BUS_PRICE,
+    Math.max(MIN_INVESTMENT, Math.round(clamped / INVESTMENT_STEP) * INVESTMENT_STEP),
+  );
+}
+
 function getInvestmentTier(amount: number) {
   return (
     investmentTiers.find((tier) => amount >= tier.min && amount <= tier.max) ??
     investmentTiers[investmentTiers.length - 1]
   );
+}
+
+function calculateInvestmentPlan(rawAmount: number): InvestmentPlan {
+  const amount = normalizeInvestment(rawAmount);
+  const tier = getInvestmentTier(amount);
+  const quota = amount / BUS_PRICE;
+  const monthlyReturn = quota * BUS_MONTHLY_NET_PROFIT;
+  const annualReturn = monthlyReturn * 12;
+  const minimumAnnualReturn = amount * tier.guarantee;
+
+  return {
+    amount,
+    annualReturn,
+    busRemaining: Math.max(0, BUS_PRICE - amount),
+    minimumAnnualReturn,
+    monthlyMinimumReturn: minimumAnnualReturn / 12,
+    monthlyReturn,
+    quota,
+    tier,
+  };
 }
 
 function ActionButton({
@@ -830,24 +870,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [selectedMonth, setSelectedMonth] = useState("Mai");
 
-  const plan = useMemo(() => {
-    const safeAmount = clampInvestment(amount);
-    const tier = getInvestmentTier(safeAmount);
-    const quota = safeAmount / BUS_PRICE;
-    const monthlyReturn = quota * BUS_MONTHLY_NET_PROFIT;
-    const annualReturn = monthlyReturn * 12;
-    const minimumAnnualReturn = safeAmount * tier.guarantee;
-    return {
-      amount: safeAmount,
-      annualReturn,
-      busRemaining: Math.max(0, BUS_PRICE - safeAmount),
-      minimumAnnualReturn,
-      monthlyMinimumReturn: minimumAnnualReturn / 12,
-      monthlyReturn,
-      quota,
-      tier,
-    };
-  }, [amount]);
+  const plan = useMemo(() => calculateInvestmentPlan(amount), [amount]);
 
   const progress = 42;
   const selectedReturn =
@@ -1015,7 +1038,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 </section>
 
                 <section className="grid gap-6 xl:grid-cols-[24rem_1fr]">
-                  <Simulator amount={amount} plan={plan} setAmount={setAmount} />
+                  <Simulator plan={plan} setAmount={setAmount} />
                   <ReturnsChart
                     monthlyReturn={plan.monthlyReturn}
                     selectedMonth={selectedMonth}
@@ -1146,23 +1169,45 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 }
 
 function Simulator({
-  amount,
   plan,
   setAmount,
 }: {
-  amount: number;
-  plan: {
-    amount: number;
-    annualReturn: number;
-    busRemaining: number;
-    minimumAnnualReturn: number;
-    monthlyMinimumReturn: number;
-    monthlyReturn: number;
-    quota: number;
-    tier: (typeof investmentTiers)[number];
-  };
+  plan: InvestmentPlan;
   setAmount: (amount: number) => void;
 }) {
+  const [draftAmount, setDraftAmount] = useState(String(plan.amount));
+  const draftNumeric = Number(draftAmount);
+  const draftIsValid =
+    draftAmount.length > 0 &&
+    Number.isFinite(draftNumeric) &&
+    draftNumeric >= MIN_INVESTMENT &&
+    draftNumeric <= BUS_PRICE;
+
+  function commitAmount(value = draftAmount) {
+    const nextAmount = normalizeInvestment(Number(value));
+    setAmount(nextAmount);
+    setDraftAmount(String(nextAmount));
+  }
+
+  function updateDraft(value: string) {
+    const digits = value.replace(/\D/g, "");
+    setDraftAmount(digits);
+
+    const nextAmount = Number(digits);
+    if (nextAmount >= MIN_INVESTMENT && nextAmount <= BUS_PRICE) {
+      setAmount(normalizeInvestment(nextAmount));
+    }
+  }
+
+  const quickAmounts = [
+    { label: "Bronze", value: 1000000 },
+    { label: "Prata", value: 5000000 },
+    { label: "Ouro", value: 10000000 },
+    { label: "Platina", value: 20000000 },
+    { label: "Diamante", value: 100000000 },
+    { label: "Total", value: BUS_PRICE },
+  ];
+
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
       <div className="flex items-center justify-between">
@@ -1178,30 +1223,72 @@ function Simulator({
       </div>
       <label className="mt-5 block text-sm font-bold text-slate-700">
         Capital a investir
-        <input
-          className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 text-lg font-black outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-          max={BUS_PRICE}
-          min={MIN_INVESTMENT}
-          onChange={(event) =>
-            setAmount(clampInvestment(Number(event.target.value)))
-          }
-          step={INVESTMENT_STEP}
-          type="number"
-          value={amount}
-        />
+        <div className="mt-2 flex gap-2">
+          <input
+            className={`h-12 min-w-0 flex-1 rounded-lg border px-4 text-lg font-black outline-none transition focus:ring-4 ${
+              draftIsValid
+                ? "border-slate-200 focus:border-cyan-400 focus:ring-cyan-300/20"
+                : "border-orange-300 focus:border-orange-400 focus:ring-orange-200/40"
+            }`}
+            inputMode="numeric"
+            onBlur={() => commitAmount()}
+            onChange={(event) => updateDraft(event.target.value)}
+            onFocus={(event) => {
+              event.target.select();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitAmount();
+              }
+            }}
+            placeholder={String(MIN_INVESTMENT)}
+            type="text"
+            value={draftAmount}
+          />
+          <button
+            className="h-12 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800"
+            onClick={() => commitAmount()}
+            type="button"
+          >
+            Aplicar
+          </button>
+        </div>
       </label>
+      <p className="mt-2 text-xs font-bold text-slate-500">
+        Minimo {formatKz(MIN_INVESTMENT)}. Maximo {formatKz(BUS_PRICE)}. O
+        simulador arredonda para passos de {formatKz(INVESTMENT_STEP)}.
+      </p>
       <input
         aria-label="Capital a investir"
         className="mt-5 h-2 w-full accent-orange-500"
         max={BUS_PRICE}
         min={MIN_INVESTMENT}
-        onChange={(event) =>
-          setAmount(clampInvestment(Number(event.target.value)))
-        }
+        onChange={(event) => {
+          const nextAmount = normalizeInvestment(Number(event.target.value));
+          setAmount(nextAmount);
+          setDraftAmount(String(nextAmount));
+        }}
         step={INVESTMENT_STEP}
         type="range"
-        value={amount}
+        value={plan.amount}
       />
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {quickAmounts.map((item) => (
+          <button
+            className={`rounded-lg border px-3 py-2 text-xs font-black transition ${
+              plan.amount === item.value
+                ? "border-slate-950 bg-slate-950 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"
+            }`}
+            key={item.label}
+            onClick={() => commitAmount(String(item.value))}
+            type="button"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
       <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
