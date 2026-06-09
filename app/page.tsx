@@ -1110,6 +1110,7 @@ function AuthPanel({
                     className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                     onChange={(event) => updateField("phone", event.target.value)}
                     placeholder="923000000"
+                    required
                     type="tel"
                     value={form.phone}
                   />

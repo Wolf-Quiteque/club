@@ -6,6 +6,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const SMS_API_URL =
+  process.env.SMS_API_URL || "https://mimo-sms-rest-api.vercel.app/send-sms";
+const SMS_SENDER = process.env.SMS_SENDER || undefined;
+
 type CreateAccountBody = {
   bankName?: string;
   email?: string;
@@ -24,6 +28,66 @@ function splitName(fullName: string) {
   return { firstName, lastName };
 }
 
+function toSmsSafeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^\x0A\x0D\x20-\x7E]/g, "")
+    .trim();
+}
+
+function normalizePhone(phone?: string) {
+  const digits = String(phone || "").replace(/\D/g, "");
+
+  if (digits.length === 9 && digits.startsWith("9")) {
+    return digits;
+  }
+
+  if (digits.length === 12 && digits.startsWith("244")) {
+    return digits.slice(-9);
+  }
+
+  return digits.slice(-9);
+}
+
+async function sendWelcomeSms(fullName: string, phone?: string) {
+  const to = normalizePhone(phone);
+
+  if (!to || to.length !== 9) {
+    return { sent: false, status: "invalid_phone" };
+  }
+
+  const firstName = fullName.trim().split(/\s+/)[0] || "Investidor";
+  const text = toSmsSafeText(
+    `NAWABUS - Clube de Investidor\n\nOla ${firstName}, a sua conta foi criada com sucesso.\n\nEntre no portal para escolher o pacote, gerar a referencia de investimento e acompanhar o processo.\n\nViajar aqui e facil.`,
+  );
+
+  try {
+    const response = await fetch(SMS_API_URL, {
+      body: JSON.stringify({
+        ...(SMS_SENDER ? { sender: SMS_SENDER } : {}),
+        text,
+        to,
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    if (response.ok) {
+      return { sent: true, status: "sent" };
+    }
+
+    console.error("Welcome SMS API error:", response.status, await response.text());
+    return { sent: false, status: "failed" };
+  } catch (error) {
+    console.error("Welcome SMS send error:", error);
+    return { sent: false, status: "failed" };
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const configError = getSupabaseConfigError(true);
@@ -35,10 +99,18 @@ export async function POST(request: Request) {
     const fullName = (body.fullName || "").trim();
     const email = (body.email || "").trim().toLowerCase();
     const password = body.password || "";
+    const phone = normalizePhone(body.phone);
 
     if (!fullName || !email || password.length < 6) {
       return NextResponse.json(
         { error: "Nome, email e palavra-passe de pelo menos 6 caracteres sao obrigatorios." },
+        { status: 400 },
+      );
+    }
+
+    if (!phone || phone.length !== 9) {
+      return NextResponse.json(
+        { error: "Telefone angolano valido e obrigatorio para receber SMS." },
         { status: 400 },
       );
     }
@@ -67,7 +139,7 @@ export async function POST(request: Request) {
         user_metadata: {
           first_name: firstName,
           last_name: lastName,
-          phone_number: body.phone || null,
+          phone_number: phone,
           role: "passenger",
         },
       });
@@ -89,7 +161,7 @@ export async function POST(request: Request) {
           full_name: fullName,
           iban: body.iban || null,
           national_id: body.nationalId || null,
-          phone: body.phone || null,
+          phone,
           status: "active",
         },
         { onConflict: "email" },
@@ -102,7 +174,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: accountError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ account }, { status: 201 });
+    const welcomeSms = await sendWelcomeSms(fullName, phone);
+
+    return NextResponse.json({ account, welcomeSms }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro interno." },
