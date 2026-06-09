@@ -937,13 +937,13 @@ function AuthPanel({
 }) {
   const isSignup = mode === "signup";
   const [form, setForm] = useState({
-    bankName: "BAI",
-    email: "investidor@nawabus.co.ao",
-    fullName: "Maria Fernandes",
-    iban: "AO06004000000000000044210",
-    nationalId: "006543210LA049",
-    password: "nawabusdemo",
-    phone: "923000000",
+    bankName: "",
+    email: "",
+    fullName: "",
+    iban: "",
+    nationalId: "",
+    password: "",
+    phone: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1072,6 +1072,7 @@ function AuthPanel({
                 <input
                   className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                   onChange={(event) => updateField("fullName", event.target.value)}
+                  placeholder="Nome do investidor"
                   required
                   type="text"
                   value={form.fullName}
@@ -1083,6 +1084,7 @@ function AuthPanel({
               <input
                 className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                 onChange={(event) => updateField("email", event.target.value)}
+                placeholder="email@exemplo.com"
                 required
                 type="email"
                 value={form.email}
@@ -1094,6 +1096,7 @@ function AuthPanel({
                 className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                 minLength={6}
                 onChange={(event) => updateField("password", event.target.value)}
+                placeholder="Minimo 6 caracteres"
                 required
                 type="password"
                 value={form.password}
@@ -1106,6 +1109,7 @@ function AuthPanel({
                   <input
                     className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                     onChange={(event) => updateField("phone", event.target.value)}
+                    placeholder="923000000"
                     type="tel"
                     value={form.phone}
                   />
@@ -1115,6 +1119,7 @@ function AuthPanel({
                   <input
                     className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                     onChange={(event) => updateField("nationalId", event.target.value)}
+                    placeholder="BI ou NIF"
                     type="text"
                     value={form.nationalId}
                   />
@@ -1122,18 +1127,25 @@ function AuthPanel({
                 <div className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr]">
                   <label className="block text-sm font-bold text-slate-700">
                     Banco
-                    <input
+                    <select
                       className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                       onChange={(event) => updateField("bankName", event.target.value)}
-                      type="text"
                       value={form.bankName}
-                    />
+                    >
+                      <option value="">Selecionar banco</option>
+                      <option value="BAI">BAI</option>
+                      <option value="BFA">BFA</option>
+                      <option value="Banco Atlantico">Banco Atlantico</option>
+                      <option value="BIC">BIC</option>
+                      <option value="Standard Bank">Standard Bank</option>
+                    </select>
                   </label>
                   <label className="block text-sm font-bold text-slate-700">
                     IBAN
                     <input
                       className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
                       onChange={(event) => updateField("iban", event.target.value)}
+                      placeholder="AO06..."
                       type="text"
                       value={form.iban}
                     />
@@ -1503,7 +1515,7 @@ function Dashboard({
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <div className="grid min-h-screen lg:grid-cols-[18rem_1fr]">
-        <aside className="hidden border-r border-white/10 bg-slate-950 px-4 py-5 text-white lg:block">
+        <aside className="hidden border-r border-white/10 bg-slate-950 px-4 py-5 text-white lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
           <Image
             alt="Nawabus"
             height={38}
@@ -2113,6 +2125,7 @@ function Simulator({
   setAmount: (amount: number) => void;
 }) {
   const [draftAmount, setDraftAmount] = useState(String(plan.amount));
+  const selectedPackage = plan.tier.name;
   const draftNumeric = Number(draftAmount);
   const draftIsValid =
     draftAmount.length > 0 &&
@@ -2136,30 +2149,77 @@ function Simulator({
     }
   }
 
-  const quickAmounts = [
-    { label: "Bronze", value: 1000000 },
-    { label: "Prata", value: 5000000 },
-    { label: "Ouro", value: 10000000 },
-    { label: "Platina", value: 20000000 },
-    { label: "Diamante", value: 100000000 },
-    { label: "Total", value: BUS_PRICE },
-  ];
+  function selectPackage(tier: InvestmentTier) {
+    const nextAmount = normalizeInvestment(tier.min);
+    setAmount(nextAmount);
+    setDraftAmount(String(nextAmount));
+  }
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Simulador
+            Escolha o pacote
           </p>
           <h2 className="mt-2 text-xl font-black text-slate-950">
-            Ajuste o montante
+            Selecione e invista
           </h2>
         </div>
         <SlidersHorizontal className="h-5 w-5 text-orange-600" />
       </div>
+
+      <div className="mt-5 grid gap-2">
+        {investmentTiers.map((tier) => {
+          const isSelected = selectedPackage === tier.name;
+          const range =
+            tier.min === tier.max
+              ? formatKz(tier.min)
+              : `${formatKz(tier.min)} - ${formatKz(tier.max)}`;
+          const monthlyReturn = (tier.min / BUS_PRICE) * BUS_MONTHLY_NET_PROFIT;
+
+          return (
+            <button
+              className={`grid min-h-24 gap-3 rounded-lg border p-4 text-left transition sm:grid-cols-[1fr_auto] sm:items-center ${
+                isSelected
+                  ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-950/15"
+                  : "border-slate-200 bg-white text-slate-950 hover:border-cyan-300 hover:bg-slate-50"
+              }`}
+              key={tier.name}
+              onClick={() => selectPackage(tier)}
+              type="button"
+            >
+              <span>
+                <span className="block text-base font-black">{tier.name}</span>
+                <span
+                  className={`mt-1 block text-xs font-bold leading-5 ${
+                    isSelected ? "text-slate-300" : "text-slate-500"
+                  }`}
+                >
+                  {range}
+                </span>
+                <span
+                  className={`mt-2 block text-xs leading-5 ${
+                    isSelected ? "text-cyan-100" : "text-slate-600"
+                  }`}
+                >
+                  Desde {formatKz(monthlyReturn)} por mes esperado.
+                </span>
+              </span>
+              <span
+                className={`inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-black ${
+                  isSelected ? "bg-cyan-300 text-slate-950" : "bg-orange-50 text-orange-700"
+                }`}
+              >
+                {formatPercent(tier.guarantee * 100)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <label className="mt-5 block text-sm font-bold text-slate-700">
-        Capital a investir
+        Valor exato do pacote
         <div className="mt-2 flex gap-2">
           <input
             className={`h-12 min-w-0 flex-1 rounded-lg border px-4 text-lg font-black outline-none transition focus:ring-4 ${
@@ -2194,7 +2254,7 @@ function Simulator({
       </label>
       <p className="mt-2 text-xs font-bold text-slate-500">
         Minimo {formatKz(MIN_INVESTMENT)}. Maximo {formatKz(BUS_PRICE)}. O
-        simulador arredonda para passos de {formatKz(INVESTMENT_STEP)}.
+        valor pode ser ajustado depois de escolher o pacote.
       </p>
       <input
         aria-label="Capital a investir"
@@ -2210,22 +2270,6 @@ function Simulator({
         type="range"
         value={plan.amount}
       />
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {quickAmounts.map((item) => (
-          <button
-            className={`rounded-lg border px-3 py-2 text-xs font-black transition ${
-              plan.amount === item.value
-                ? "border-slate-950 bg-slate-950 text-white"
-                : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"
-            }`}
-            key={item.label}
-            onClick={() => commitAmount(String(item.value))}
-            type="button"
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
       <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
