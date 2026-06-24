@@ -31,8 +31,8 @@ export default async function ReferencePage({ params }: ReferencePageProps) {
           amount,
           asset_code,
           expected_monthly_return,
+          minimum_annual_return,
           package_name,
-          quota,
           route_label,
           status,
           account:club_investor_accounts(full_name, email)
@@ -89,20 +89,17 @@ export default async function ReferencePage({ params }: ReferencePageProps) {
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 {investmentReference.investment.account.full_name} esta a
-                investir {formatKz(Number(investmentReference.investment.amount))} em{" "}
-                {investmentReference.investment.asset_code} na rota{" "}
-                {investmentReference.investment.route_label}.
+                investir {formatKz(Number(investmentReference.investment.amount))}.
+                O pagamento mensal previsto fica registado nesta referencia.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <InfoBlock
-                label="Cota"
-                value={`${(Number(investmentReference.investment.quota) * 100).toLocaleString("pt-PT", {
-                  maximumFractionDigits: 2,
-                })}%`}
+                label="Rendimento anual"
+                value={formatKz(Number(investmentReference.investment.minimum_annual_return))}
               />
               <InfoBlock
-                label="Lucro mensal esperado"
+                label="Retorno mensal total"
                 value={formatKz(Number(investmentReference.investment.expected_monthly_return))}
               />
             </div>

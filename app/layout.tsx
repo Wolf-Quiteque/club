@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Clube de Investidor Nawabus",
   description:
-    "Demo do Clube de Investidor Nawabus com retorno anual de 20% e prazo de 24 meses.",
+    "Clube de Investidor Nawabus com pacotes de 21%, 23% e 25% ao ano pagos mensalmente.",
 };
 
 export default function RootLayout({

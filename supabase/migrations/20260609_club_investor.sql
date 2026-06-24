@@ -40,11 +40,9 @@ INSERT INTO public.club_investor_packages (
   benefit,
   sort_order
 ) VALUES
-  ('bronze', 'Bronze', 1000000, 4999999, 0.15, 'Pool', 'Extrato mensal simples', 1),
-  ('prata', 'Prata', 5000000, 9999999, 0.20, 'Pool', 'Relatorio mensal de operacao', 2),
-  ('ouro', 'Ouro', 10000000, 19999999, 0.25, 'Pool avancado', 'Branding inicial no autocarro', 3),
-  ('platina', 'Platina', 20000000, 99999999, 0.30, 'Solo dominante', 'GPS, dashboard de receitas e prioridade', 4),
-  ('diamante', 'Diamante', 100000000, 125000000, 0.40, 'Proprietario', 'Escritura em nome do investidor aos 125M Kz', 5)
+  ('plano21', 'Plano 21', 1000000, 24999999, 0.21, 'Retorno mensal', '21% ao ano, pago mensalmente durante 12 meses.', 1),
+  ('plano23', 'Plano 23', 25000000, 74999999, 0.23, 'Retorno mensal', '23% ao ano, pago mensalmente durante 12 meses.', 2),
+  ('plano25', 'Plano 25', 75000000, 125000000, 0.25, 'Retorno mensal', '25% ao ano, pago mensalmente durante 12 meses.', 3)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   min_amount = EXCLUDED.min_amount,

@@ -41,53 +41,41 @@ type DashboardTab = "overview" | "returns" | "contract" | "account";
 
 const BUS_PRICE = 125000000;
 const BUS_MONTHLY_NET_PROFIT = 5000000;
-const EXPECTED_ANNUAL_ROI = 0.48;
+const EXPECTED_ANNUAL_ROI = 0.21;
 const MIN_INVESTMENT = 1000000;
 const INVESTMENT_STEP = 1000000;
 const MIN_MONTHLY_NET_PROFIT = 1000000;
 const MAX_MONTHLY_NET_PROFIT = 10000000;
 const MONTHLY_NET_PROFIT_STEP = 250000;
+const RETURN_PERIOD_MONTHS = 12;
 
 const investmentTiers = [
   {
-    name: "Bronze",
+    code: "plano21",
+    name: "Plano 21",
     min: 1000000,
-    max: 4999999,
-    guarantee: 0.15,
-    model: "Pool",
-    benefit: "Extrato mensal simples",
+    max: 24999999,
+    guarantee: 0.21,
+    model: "Retorno mensal",
+    benefit: "21% ao ano, pago mensalmente durante 12 meses.",
   },
   {
-    name: "Prata",
-    min: 5000000,
-    max: 9999999,
-    guarantee: 0.2,
-    model: "Pool",
-    benefit: "Relatorio mensal de operacao",
+    code: "plano23",
+    name: "Plano 23",
+    min: 25000000,
+    max: 74999999,
+    guarantee: 0.23,
+    model: "Retorno mensal",
+    benefit: "23% ao ano, pago mensalmente durante 12 meses.",
   },
   {
-    name: "Ouro",
-    min: 10000000,
-    max: 19999999,
-    guarantee: 0.25,
-    model: "Pool avancado",
-    benefit: "Branding inicial no autocarro",
-  },
-  {
-    name: "Platina",
-    min: 20000000,
-    max: 99999999,
-    guarantee: 0.3,
-    model: "Solo dominante",
-    benefit: "GPS, dashboard de receitas e prioridade",
-  },
-  {
-    name: "Diamante",
-    min: 100000000,
+    code: "plano25",
+    name: "Plano 25",
+    min: 75000000,
     max: BUS_PRICE,
-    guarantee: 0.4,
-    model: "Proprietario",
-    benefit: "Escritura em nome do investidor aos 125M Kz",
+    guarantee: 0.25,
+    model: "Retorno mensal",
+    benefit: "25% ao ano, pago mensalmente durante 12 meses.",
   },
 ];
 
@@ -167,7 +155,7 @@ const monthlyReturns = [
 const investSteps = [
   {
     title: "Simular capital",
-    detail: "Escolha a cota e veja o lucro proporcional.",
+    detail: "Escolha o valor e veja o retorno mensal.",
     icon: SlidersHorizontal,
   },
   {
@@ -177,7 +165,7 @@ const investSteps = [
   },
   {
     title: "Assinar contrato",
-    detail: "Contrato com matricula, rota e autocarro identificado.",
+    detail: "Contrato simples com valor, prazo e retorno mensal.",
     icon: FileCheck2,
   },
   {
@@ -190,13 +178,13 @@ const investSteps = [
 const investorActivity = [
   {
     title: "Pagamento de Maio liquidado",
-    detail: "Parte proporcional do lucro enviada para BAI final 4421.",
+    detail: "Retorno mensal enviado para BAI final 4421.",
     time: "09:40",
     tone: "green",
   },
   {
     title: "Relatorio operacional anexado",
-    detail: "Passageiros, quilometros, receita, custos e margem.",
+    detail: "Resumo de operacao e aquisicoes partilhado com investidores.",
     time: "Ontem",
     tone: "blue",
   },
@@ -211,7 +199,25 @@ const investorActivity = [
 const fleetSignals = [
   { label: "Frota gerida", value: "34", detail: "4 proprios + 30 externos" },
   { label: "Receita 2025", value: "367M", detail: "Kz auditados" },
-  { label: "Lucro liquido", value: "116M", detail: "Kz verificados" },
+  { label: "Resultado 2025", value: "116M", detail: "Kz verificados" },
+];
+
+const acquisitionAssets = [
+  {
+    title: "Autocarro urbano novo",
+    detail: "Unidade prevista para reforco de rota.",
+    status: "Imagem em breve",
+  },
+  {
+    title: "Autocarro interprovincial novo",
+    detail: "Unidade prevista para rotas de longa distancia.",
+    status: "Imagem em breve",
+  },
+  {
+    title: "Autocarro executivo novo",
+    detail: "Unidade prevista para servico premium.",
+    status: "Imagem em breve",
+  },
 ];
 
 const dashboardNavItems: {
@@ -249,6 +255,16 @@ const formatPercent = (value: number) =>
     maximumFractionDigits: value < 10 ? 1 : 0,
     minimumFractionDigits: value < 1 ? 1 : 0,
   })}%`;
+
+function getReferencePrefix(packageCode: string) {
+  const prefixes: Record<string, string> = {
+    plano21: "INV-21",
+    plano23: "INV-23",
+    plano25: "INV-25",
+  };
+
+  return prefixes[packageCode] || `INV-${packageCode.slice(0, 3).toUpperCase()}`;
+}
 
 function getInvestmentReference(investment?: InvestorInvestment | null) {
   if (!investment?.reference) {
@@ -351,18 +367,18 @@ function calculateInvestmentPlan(
   const monthlyNetProfit = normalizeMonthlyNetProfit(rawMonthlyNetProfit);
   const tier = getInvestmentTier(amount);
   const quota = amount / BUS_PRICE;
-  const monthlyReturn = quota * monthlyNetProfit;
-  const annualReturn = monthlyReturn * 12;
   const minimumAnnualReturn = amount * tier.guarantee;
+  const annualReturn = amount + minimumAnnualReturn;
+  const monthlyReturn = annualReturn / RETURN_PERIOD_MONTHS;
 
   return {
     amount,
     annualReturn,
     busRemaining: Math.max(0, BUS_PRICE - amount),
-    expectedAnnualRoi: (monthlyNetProfit * 12) / BUS_PRICE,
+    expectedAnnualRoi: tier.guarantee,
     minimumAnnualReturn,
     monthlyNetProfit,
-    monthlyMinimumReturn: minimumAnnualReturn / 12,
+    monthlyMinimumReturn: minimumAnnualReturn / RETURN_PERIOD_MONTHS,
     monthlyReturn,
     quota,
     tier,
@@ -489,10 +505,8 @@ function StatusPill({
 }
 
 function ProductPreview() {
-  const previewAmount = 25000000;
-  const previewQuota = (previewAmount / BUS_PRICE) * 100;
-  const previewMonthlyReturn =
-    (previewAmount / BUS_PRICE) * BUS_MONTHLY_NET_PROFIT;
+  const previewAmount = 10000000;
+  const previewPlan = calculateInvestmentPlan(previewAmount);
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:px-6 lg:grid-cols-[1.35fr_0.9fr] lg:px-8">
@@ -510,8 +524,8 @@ function ProductPreview() {
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {[
             ["Capital", formatKz(previewAmount)],
-            ["Cota", formatPercent(previewQuota)],
-            ["ROI esperado", `${formatPercent(EXPECTED_ANNUAL_ROI * 100)} ao ano`],
+            ["Plano", previewPlan.tier.name],
+            ["Taxa anual", `${formatPercent(previewPlan.tier.guarantee * 100)} ao ano`],
           ].map(([label, value]) => (
             <div
               className="rounded-lg border border-white/10 bg-white/[0.06] p-4"
@@ -548,25 +562,25 @@ function ProductPreview() {
           <Signal className="h-5 w-5 text-emerald-500" />
         </div>
         <div className="mt-4 rounded-lg bg-slate-950 p-4 text-white">
-          <p className="text-sm text-slate-400">Lucro mensal esperado</p>
+          <p className="text-sm text-slate-400">Retorno mensal total</p>
           <p className="mt-2 text-3xl font-black tracking-tight">
-            {formatKz(previewMonthlyReturn)}
+            {formatKz(previewPlan.monthlyReturn)}
           </p>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
             <div
               className="h-full rounded-full bg-cyan-300"
-              style={{ width: `${previewQuota}%` }}
+              style={{ width: "21%" }}
             />
           </div>
           <p className="mt-3 text-xs font-bold text-cyan-100">
-            {formatPercent(previewQuota)} do autocarro de {formatKz(BUS_PRICE)}
+            Inclui capital dividido em 12 meses + 21% ao ano.
           </p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-xs font-bold text-slate-500">Risco demo</p>
+            <p className="text-xs font-bold text-slate-500">Rendimento</p>
             <p className="mt-1 text-sm font-black text-slate-950">
-              Garantia 30%
+              {formatKz(previewPlan.monthlyMinimumReturn)}/mes
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 p-3">
@@ -588,20 +602,17 @@ function TierLadder() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
-              Niveis de investimento
+              Pacotes
             </p>
             <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
-              A cota determina exatamente quanto lucro recebes.
+              Tres faixas simples. O retorno e mensal.
             </h2>
           </div>
-          <StatusPill tone="slate">
-            Autocarro base: {formatKz(BUS_PRICE)}
-          </StatusPill>
+          <StatusPill tone="slate">Prazo: 12 meses</StatusPill>
         </div>
-        <div className="mt-8 grid gap-3 lg:grid-cols-5">
+        <div className="mt-8 grid gap-3 lg:grid-cols-3">
           {investmentTiers.map((tier) => {
-            const expectedMonthly = (tier.min / BUS_PRICE) * BUS_MONTHLY_NET_PROFIT;
-            const minQuota = (tier.min / BUS_PRICE) * 100;
+            const expectedMonthly = calculateInvestmentPlan(tier.min).monthlyReturn;
             const range =
               tier.min === tier.max
                 ? formatKz(tier.min)
@@ -615,7 +626,7 @@ function TierLadder() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                      Tier
+                      Plano
                     </p>
                     <p className="mt-1 text-xl font-black text-slate-950">
                       {tier.name}
@@ -629,14 +640,59 @@ function TierLadder() {
                   {range}
                 </p>
                 <p className="mt-3 text-sm font-black text-slate-950">
-                  Desde {formatPercent(minQuota)} do autocarro
+                  {formatPercent(tier.guarantee * 100)} ao ano
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {formatKz(expectedMonthly)} esperado por mes. {tier.benefit}.
+                  Desde {formatKz(expectedMonthly)} por mes. {tier.benefit}
                 </p>
               </div>
             );
           })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AssetsToAcquire() {
+  return (
+    <section className="px-4 pb-18 sm:px-6 lg:px-8" id="activos">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
+              Activos para adquirir
+            </p>
+            <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+              Novos autocarros que a Nawabus pretende comprar.
+            </h2>
+          </div>
+          <StatusPill tone="slate">Fotos finais em preparacao</StatusPill>
+        </div>
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          {acquisitionAssets.map((asset) => (
+            <div
+              className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-950/5"
+              key={asset.title}
+            >
+              <div className="flex aspect-[4/3] items-center justify-center bg-slate-100">
+                <div className="text-center">
+                  <CalendarClock className="mx-auto h-8 w-8 text-orange-600" />
+                  <p className="mt-3 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                    {asset.status}
+                  </p>
+                </div>
+              </div>
+              <div className="p-5">
+                <p className="text-lg font-black text-slate-950">
+                  {asset.title}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {asset.detail}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -649,40 +705,25 @@ function PublicSimulationSection({
   onAuthOpen: (mode: AuthMode) => void;
 }) {
   const [amount, setAmount] = useState(5000000);
-  const [monthlyNetProfit, setMonthlyNetProfit] = useState(
-    BUS_MONTHLY_NET_PROFIT,
-  );
   const [amountDraft, setAmountDraft] = useState(String(amount));
-  const [profitDraft, setProfitDraft] = useState(String(monthlyNetProfit));
   const plan = useMemo(
-    () => calculateInvestmentPlan(amount, monthlyNetProfit),
-    [amount, monthlyNetProfit],
+    () => calculateInvestmentPlan(amount),
+    [amount],
   );
 
   const quickAmounts = [
     { label: "1M", value: 1000000 },
-    { label: "5M", value: 5000000 },
     { label: "10M", value: 10000000 },
-    { label: "20M", value: 20000000 },
+    { label: "25M", value: 25000000 },
     { label: "50M", value: 50000000 },
+    { label: "75M", value: 75000000 },
     { label: "125M", value: BUS_PRICE },
-  ];
-  const profitScenarios = [
-    { label: "Conservador", value: 3500000 },
-    { label: "Base", value: BUS_MONTHLY_NET_PROFIT },
-    { label: "Forte", value: 6500000 },
   ];
 
   function commitAmount(value = amountDraft) {
     const nextAmount = normalizeInvestment(Number(value));
     setAmount(nextAmount);
     setAmountDraft(String(nextAmount));
-  }
-
-  function commitProfit(value = profitDraft) {
-    const nextProfit = normalizeMonthlyNetProfit(Number(value));
-    setMonthlyNetProfit(nextProfit);
-    setProfitDraft(String(nextProfit));
   }
 
   function updateAmountDraft(value: string) {
@@ -692,19 +733,6 @@ function PublicSimulationSection({
     const nextAmount = Number(digits);
     if (nextAmount >= MIN_INVESTMENT && nextAmount <= BUS_PRICE) {
       setAmount(normalizeInvestment(nextAmount));
-    }
-  }
-
-  function updateProfitDraft(value: string) {
-    const digits = value.replace(/\D/g, "");
-    setProfitDraft(digits);
-
-    const nextProfit = Number(digits);
-    if (
-      nextProfit >= MIN_MONTHLY_NET_PROFIT &&
-      nextProfit <= MAX_MONTHLY_NET_PROFIT
-    ) {
-      setMonthlyNetProfit(normalizeMonthlyNetProfit(nextProfit));
     }
   }
 
@@ -718,13 +746,13 @@ function PublicSimulationSection({
                 Simulador publico
               </p>
               <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
-                Digite valores e veja a cota em tempo real.
+                Digite o valor e veja quanto recebe por mes.
               </h2>
             </div>
-            <StatusPill tone="blue">Base: {formatKz(BUS_PRICE)}</StatusPill>
+            <StatusPill tone="blue">Ate {formatKz(BUS_PRICE)}</StatusPill>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid gap-4">
             <label className="block text-sm font-bold text-slate-700">
               Capital a investir
               <div className="mt-2 flex gap-2">
@@ -752,42 +780,14 @@ function PublicSimulationSection({
                 </button>
               </div>
             </label>
-
-            <label className="block text-sm font-bold text-slate-700">
-              Lucro liquido mensal do autocarro
-              <div className="mt-2 flex gap-2">
-                <input
-                  className="h-12 min-w-0 flex-1 rounded-lg border border-slate-200 px-4 text-lg font-black text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                  inputMode="numeric"
-                  onBlur={() => commitProfit()}
-                  onChange={(event) => updateProfitDraft(event.target.value)}
-                  onFocus={(event) => event.target.select()}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      commitProfit();
-                    }
-                  }}
-                  type="text"
-                  value={profitDraft}
-                />
-                <button
-                  className="h-12 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800"
-                  onClick={() => commitProfit()}
-                  type="button"
-                >
-                  OK
-                </button>
-              </div>
-            </label>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
                 Capital rapido
               </p>
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {quickAmounts.map((item) => (
                   <button
                     className={`rounded-lg border px-3 py-2 text-xs font-black transition ${
@@ -808,35 +808,9 @@ function PublicSimulationSection({
                 ))}
               </div>
             </div>
-
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                Cenario de lucro
-              </p>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {profitScenarios.map((item) => (
-                  <button
-                    className={`rounded-lg border px-3 py-2 text-xs font-black transition ${
-                      plan.monthlyNetProfit === item.value
-                        ? "border-orange-500 bg-orange-500 text-white"
-                        : "border-slate-200 bg-slate-50 text-slate-600 hover:border-orange-300"
-                    }`}
-                    key={item.label}
-                    onClick={() => {
-                      const nextProfit = normalizeMonthlyNetProfit(item.value);
-                      setMonthlyNetProfit(nextProfit);
-                      setProfitDraft(String(nextProfit));
-                    }}
-                    type="button"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4">
             <input
               aria-label="Capital a investir"
               className="h-2 w-full accent-orange-500"
@@ -851,22 +825,6 @@ function PublicSimulationSection({
               type="range"
               value={plan.amount}
             />
-            <input
-              aria-label="Lucro liquido mensal"
-              className="h-2 w-full accent-cyan-500"
-              max={MAX_MONTHLY_NET_PROFIT}
-              min={MIN_MONTHLY_NET_PROFIT}
-              onChange={(event) => {
-                const nextProfit = normalizeMonthlyNetProfit(
-                  Number(event.target.value),
-                );
-                setMonthlyNetProfit(nextProfit);
-                setProfitDraft(String(nextProfit));
-              }}
-              step={MONTHLY_NET_PROFIT_STEP}
-              type="range"
-              value={plan.monthlyNetProfit}
-            />
           </div>
         </div>
 
@@ -877,7 +835,7 @@ function PublicSimulationSection({
                 Resultado da simulacao
               </p>
               <h3 className="mt-2 text-3xl font-black tracking-tight">
-                Tier {plan.tier.name}
+                {plan.tier.name}
               </h3>
             </div>
             <StatusPill tone="blue">{plan.tier.model}</StatusPill>
@@ -885,12 +843,12 @@ function PublicSimulationSection({
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {[
-              ["Cota no autocarro", formatPercent(plan.quota * 100)],
-              ["Lucro mensal esperado", formatKz(plan.monthlyReturn)],
-              ["Retorno anual esperado", formatKz(plan.annualReturn)],
-              ["Garantia minima anual", formatKz(plan.minimumAnnualReturn)],
-              ["Minimo mensal", formatKz(plan.monthlyMinimumReturn)],
-              ["ROI do cenario", `${formatPercent(plan.expectedAnnualRoi * 100)} ao ano`],
+              ["Retorno mensal total", formatKz(plan.monthlyReturn)],
+              ["Rendimento mensal", formatKz(plan.monthlyMinimumReturn)],
+              ["Rendimento anual", formatKz(plan.minimumAnnualReturn)],
+              ["Total em 12 meses", formatKz(plan.annualReturn)],
+              ["Taxa do plano", `${formatPercent(plan.expectedAnnualRoi * 100)} ao ano`],
+              ["Capital", formatKz(plan.amount)],
             ].map(([label, value]) => (
               <div
                 className="rounded-lg border border-white/10 bg-white/[0.06] p-4"
@@ -906,9 +864,10 @@ function PublicSimulationSection({
 
           <div className="mt-5 rounded-lg bg-white/8 p-4">
             <p className="text-sm leading-6 text-slate-300">
-              Com {formatKz(plan.amount)}, o investidor financia{" "}
-              {formatPercent(plan.quota * 100)} de um autocarro e recebe a
-              mesma percentagem do lucro liquido mensal gerado pelo ativo.
+              Com {formatKz(plan.amount)}, o investidor recebe{" "}
+              {formatKz(plan.monthlyReturn)} por mes durante 12 meses. Este
+              valor inclui a devolucao do capital e o rendimento anual de{" "}
+              {formatPercent(plan.tier.guarantee * 100)}.
             </p>
           </div>
 
@@ -1008,12 +967,11 @@ function AuthPanel({
             Acesso demo
           </p>
           <h2 className="mt-4 max-w-2xl text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
-            Uma area privada para mostrar cotas, ativos e retornos.
+            Uma area privada para mostrar investimento, referencias e retornos.
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
-            O fluxo simula o que o investidor precisa ver: percentagem do
-            autocarro, tier, garantia minima, lucro mensal, rota, matricula e
-            relatorios de operacao.
+            O fluxo simula o que o investidor precisa ver: pacote, valor
+            investido, referencia, pagamentos mensais e conta de recebimento.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {investSteps.map((step) => {
@@ -1295,12 +1253,11 @@ function Landing({
                 Clube de Investidor Nawabus
               </div>
               <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[0.98] tracking-tight text-white sm:text-7xl lg:text-8xl">
-                Compre uma cota da frota. Receba lucro real todo mes.
+                Invista na Nawabus. Receba o retorno todos os meses.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
-                Cada investimento financia um autocarro identificado por
-                matricula e rota. O retorno vem da tua percentagem no lucro
-                liquido que esse ativo gera.
+                Escolha um dos tres pacotes, invista a partir de 1M Kz e receba
+                o capital mais rendimento dividido em pagamentos mensais.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <ActionButton
@@ -1330,19 +1287,19 @@ function Landing({
       <section className="px-4 py-16 sm:px-6 lg:px-8" id="modelo">
         <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-3">
           <Metric
-            detail="Calculado a partir de 5M Kz de lucro liquido mensal por autocarro."
+            detail="Primeira faixa: de 1M Kz a 24.999.999 Kz."
             icon={<TrendingUp className="h-5 w-5" />}
-            label="ROI esperado"
+            label="Plano inicial"
             value={`${formatPercent(EXPECTED_ANNUAL_ROI * 100)} ao ano`}
           />
           <Metric
-            detail="Valor base para financiar um autocarro completo."
+            detail="Pagamentos mensais durante o primeiro ano do investimento."
             icon={<CalendarClock className="h-5 w-5" />}
-            label="Ativo"
-            value="125M Kz"
+            label="Prazo"
+            value="12 meses"
           />
           <Metric
-            detail="Bronze a Diamante, com garantias minimas de 15% a 40%."
+            detail="Tres pacotes: 21%, 23% e 25% ao ano."
             icon={<CircleDollarSign className="h-5 w-5" />}
             label="Entrada"
             value="1M Kz"
@@ -1353,6 +1310,8 @@ function Landing({
       <PublicSimulationSection onAuthOpen={onAuthOpen} />
 
       <TierLadder />
+
+      <AssetsToAcquire />
 
       <section className="bg-slate-950 px-4 py-18 text-white sm:px-6 lg:px-8" id="sinais">
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
@@ -1670,27 +1629,27 @@ function Dashboard({
 
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <Metric
-                    detail={`Tier ${plan.tier.name} no modelo ${plan.tier.model}.`}
+                    detail={`${formatPercent(plan.tier.guarantee * 100)} ao ano durante 12 meses.`}
                     icon={<Wallet className="h-5 w-5" />}
                     label="Capital investido"
                     value={formatKz(plan.amount)}
                   />
                   <Metric
-                    detail="Parte proporcional de 5M Kz de lucro liquido mensal."
+                    detail="Capital + rendimento dividido em 12 pagamentos."
                     icon={<TrendingUp className="h-5 w-5" />}
-                    label="Lucro mensal"
+                    label="Retorno mensal"
                     value={formatKz(plan.monthlyReturn)}
                   />
                   <Metric
-                    detail="Percentagem do autocarro financiada pelo investidor."
+                    detail="Rendimento mensal separado do capital."
                     icon={<CalendarClock className="h-5 w-5" />}
-                    label="Cota do ativo"
-                    value={formatPercent(plan.quota * 100)}
+                    label="Rendimento mensal"
+                    value={formatKz(plan.monthlyMinimumReturn)}
                   />
                   <Metric
-                    detail={`${formatPercent(plan.tier.guarantee * 100)} ao ano por contrato.`}
+                    detail="Rendimento total esperado no ano."
                     icon={<CircleDollarSign className="h-5 w-5" />}
-                    label="Garantia minima"
+                    label="Rendimento anual"
                     value={formatKz(plan.minimumAnnualReturn)}
                   />
                 </section>
@@ -1735,21 +1694,20 @@ function Dashboard({
                     {selectedReturn.month}
                   </h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">
-                    Valor esperado de {formatKz(plan.monthlyReturn)} para uma
-                    cota de {formatPercent(plan.quota * 100)} com estado{" "}
-                    {selectedReturn.status.toLowerCase()}.
+                    Valor esperado de {formatKz(plan.monthlyReturn)} para este
+                    pacote, com estado {selectedReturn.status.toLowerCase()}.
                   </p>
                   <div className="mt-5 grid gap-3">
                     <Metric
-                      detail="Parte proporcional do lucro liquido do autocarro."
+                      detail="Capital + rendimento mensal do plano."
                       icon={<Banknote className="h-5 w-5" />}
                       label="Pagamento esperado"
                       value={formatKz(plan.monthlyReturn)}
                     />
                     <Metric
-                      detail={`${formatPercent(plan.tier.guarantee * 100)} minimo anual para o Tier ${plan.tier.name}.`}
+                      detail={`${formatPercent(plan.tier.guarantee * 100)} ao ano para o ${plan.tier.name}.`}
                       icon={<LineChart className="h-5 w-5" />}
-                      label="Garantia anual"
+                      label="Rendimento anual"
                       value={formatKz(plan.minimumAnnualReturn)}
                     />
                   </div>
@@ -1775,17 +1733,15 @@ function Dashboard({
                   </div>
                   <div className="mt-6 grid gap-3 sm:grid-cols-3">
                     <Metric
-                      detail="Capital necessario para fechar o ativo."
+                      detail="Valor do investimento selecionado."
                       icon={<Clock3 className="h-5 w-5" />}
-                      label="Por financiar"
-                      value={formatKz(
-                        Math.max(0, BUS_PRICE - Number(latestInvestment?.amount || plan.amount)),
-                      )}
+                      label="Capital"
+                      value={formatKz(Number(latestInvestment?.amount || plan.amount))}
                     />
                     <Metric
-                      detail="Matricula e rota ficam ligados ao contrato."
+                      detail="Registo interno do investimento."
                       icon={<LockKeyhole className="h-5 w-5" />}
-                      label="Ativo"
+                      label="Codigo"
                       value={latestInvestment?.asset_code || "NB-2026-014"}
                     />
                     <Metric
@@ -1902,6 +1858,11 @@ function ReferenceCard({
   plan: InvestmentPlan;
 }) {
   const reference = getInvestmentReference(investment);
+  const referenceMatchesSelection =
+    Boolean(reference && investment) &&
+    Number(investment?.amount) === plan.amount &&
+    investment?.package_name === plan.tier.name;
+  const activeReference = referenceMatchesSelection ? reference : null;
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
@@ -1911,31 +1872,31 @@ function ReferenceCard({
             Referencia de pagamento
           </p>
           <h2 className="mt-2 break-words text-2xl font-black text-slate-950">
-            {reference?.reference || `INV-${plan.tier.name.slice(0, 3).toUpperCase()}-...`}
+            {activeReference?.reference || `${getReferencePrefix(plan.tier.code)}-...`}
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            O prefixo da referencia segue o pacote escolhido: {plan.tier.name}.
+            Pacote selecionado: {plan.tier.name} com valor de {formatKz(plan.amount)}.
           </p>
         </div>
-        <StatusPill tone={reference ? "orange" : "slate"}>
-          {reference ? statusText(reference.status) : "Por gerar"}
+        <StatusPill tone={activeReference ? "orange" : "slate"}>
+          {activeReference ? statusText(activeReference.status) : "Selecao atual"}
         </StatusPill>
       </div>
 
-      {reference ? (
+      {activeReference ? (
         <div className="mt-5 grid gap-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <Metric
               detail="Entidade usada nas referencias Nawabus."
               icon={<ReceiptText className="h-5 w-5" />}
               label="Entidade"
-              value={reference.entity}
+              value={activeReference.entity}
             />
             <Metric
-              detail={`Pacote ${investment?.package_name || plan.tier.name}.`}
+              detail={`Pacote ${plan.tier.name}.`}
               icon={<Wallet className="h-5 w-5" />}
               label="Valor"
-              value={formatKz(Number(reference.amount))}
+              value={formatKz(Number(activeReference.amount))}
             />
             <Metric
               detail="Link publico para validar esta referencia."
@@ -1963,7 +1924,7 @@ function ReferenceCard({
             </button>
             <a
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800"
-              href={reference.reference_url}
+              href={activeReference.reference_url}
               rel="noopener noreferrer"
               target="_blank"
             >
@@ -1973,13 +1934,33 @@ function ReferenceCard({
           </div>
         </div>
       ) : (
-        <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-5 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Metric
+              detail={`${formatPercent(plan.tier.guarantee * 100)} ao ano para este pacote.`}
+              icon={<ShieldCheck className="h-5 w-5" />}
+              label="Pacote"
+              value={plan.tier.name}
+            />
+            <Metric
+              detail="Valor usado para gerar a proxima referencia."
+              icon={<Wallet className="h-5 w-5" />}
+              label="Valor"
+              value={formatKz(plan.amount)}
+            />
+            <Metric
+              detail="Capital + rendimento dividido por 12 meses."
+              icon={<TrendingUp className="h-5 w-5" />}
+              label="Retorno mensal"
+              value={formatKz(plan.monthlyReturn)}
+            />
+          </div>
           <p className="text-sm leading-6 text-slate-600">
-            Gere uma referencia para gravar o pacote {plan.tier.name} com valor
-            de {formatKz(plan.amount)} na base de dados.
+            Gere uma referencia para gravar esta selecao. Referencias anteriores
+            continuam guardadas no historico.
           </p>
           <button
-            className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800 disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800 disabled:opacity-60"
             disabled={creating}
             onClick={onCreate}
             type="button"
@@ -2177,7 +2158,7 @@ function Simulator({
             tier.min === tier.max
               ? formatKz(tier.min)
               : `${formatKz(tier.min)} - ${formatKz(tier.max)}`;
-          const monthlyReturn = (tier.min / BUS_PRICE) * BUS_MONTHLY_NET_PROFIT;
+          const monthlyReturn = calculateInvestmentPlan(tier.min).monthlyReturn;
 
           return (
             <button
@@ -2204,7 +2185,7 @@ function Simulator({
                     isSelected ? "text-cyan-100" : "text-slate-600"
                   }`}
                 >
-                  Desde {formatKz(monthlyReturn)} por mes esperado.
+                  Desde {formatKz(monthlyReturn)} por mes.
                 </span>
               </span>
               <span
@@ -2275,25 +2256,23 @@ function Simulator({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-              Tier atual
+              Pacote atual
             </p>
             <p className="mt-1 text-xl font-black text-slate-950">
               {plan.tier.name}
             </p>
           </div>
-          <StatusPill tone={plan.tier.model === "Pool" ? "blue" : "orange"}>
-            {plan.tier.model}
-          </StatusPill>
+          <StatusPill tone="blue">{plan.tier.model}</StatusPill>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <p className="text-xs font-bold text-slate-500">Cota</p>
+            <p className="text-xs font-bold text-slate-500">Retorno mensal</p>
             <p className="mt-1 text-sm font-black text-slate-950">
-              {formatPercent(plan.quota * 100)}
+              {formatKz(plan.monthlyReturn)}
             </p>
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-500">Garantia</p>
+            <p className="text-xs font-bold text-slate-500">Taxa anual</p>
             <p className="mt-1 text-sm font-black text-slate-950">
               {formatPercent(plan.tier.guarantee * 100)} ao ano
             </p>
@@ -2304,14 +2283,12 @@ function Simulator({
       <div className="mt-5 rounded-lg bg-slate-950 p-4 text-white">
         <p className="text-sm leading-6 text-slate-300">
           Com <strong className="text-white">{formatKz(plan.amount)}</strong>,
-          o investidor financia {formatPercent(plan.quota * 100)} do autocarro
-          e recebe cerca de{" "}
+          o investidor recebe cerca de{" "}
           <strong className="text-cyan-200">{formatKz(plan.monthlyReturn)}</strong>{" "}
-          por mes, com minimo contratual de{" "}
+          por mes durante 12 meses. O rendimento mensal estimado e{" "}
           <strong className="text-cyan-200">
             {formatKz(plan.monthlyMinimumReturn)}
-          </strong>{" "}
-          por mes.
+          </strong>.
         </p>
       </div>
     </div>
