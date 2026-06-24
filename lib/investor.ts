@@ -10,8 +10,8 @@ export const RETURN_PERIOD_MONTHS = 12;
 
 export const investmentTiers = [
   {
-    code: "plano21",
-    name: "Plano 21",
+    code: "prata",
+    name: "Prata",
     min: 1000000,
     max: 24999999,
     guarantee: 0.21,
@@ -19,8 +19,8 @@ export const investmentTiers = [
     benefit: "21% ao ano, pago mensalmente durante 12 meses.",
   },
   {
-    code: "plano23",
-    name: "Plano 23",
+    code: "ouro",
+    name: "Ouro",
     min: 25000000,
     max: 74999999,
     guarantee: 0.23,
@@ -28,8 +28,8 @@ export const investmentTiers = [
     benefit: "23% ao ano, pago mensalmente durante 12 meses.",
   },
   {
-    code: "plano25",
-    name: "Plano 25",
+    code: "diamante",
+    name: "Diamante",
     min: 75000000,
     max: BUS_PRICE,
     guarantee: 0.25,
@@ -137,9 +137,9 @@ export function formatPercent(value: number) {
 
 export function getReferencePrefix(packageCode: string) {
   const prefixes: Record<string, string> = {
-    plano21: "INV-21",
-    plano23: "INV-23",
-    plano25: "INV-25",
+    prata: "INV-PRA",
+    ouro: "INV-OUR",
+    diamante: "INV-DIA",
   };
 
   if (prefixes[packageCode]) {

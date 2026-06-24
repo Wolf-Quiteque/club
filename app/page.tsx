@@ -3,41 +3,22 @@
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
-  Activity,
   ArrowRight,
-  Banknote,
-  BarChart3,
-  Bell,
   CalendarClock,
-  CheckCircle2,
   ChevronRight,
   CircleDollarSign,
-  Clock3,
-  Copy,
-  CreditCard,
-  ExternalLink,
   FileCheck2,
-  Gauge,
-  LayoutDashboard,
-  LineChart,
   Loader2,
   LockKeyhole,
-  LogOut,
   Menu,
-  PlusCircle,
   ReceiptText,
   ShieldCheck,
   Signal,
   SlidersHorizontal,
   TrendingUp,
-  UserPlus,
-  Wallet,
   X,
   Zap,
 } from "lucide-react";
-
-type AuthMode = "login" | "signup";
-type DashboardTab = "overview" | "returns" | "contract" | "account";
 
 const BUS_PRICE = 125000000;
 const BUS_MONTHLY_NET_PROFIT = 5000000;
@@ -51,8 +32,8 @@ const RETURN_PERIOD_MONTHS = 12;
 
 const investmentTiers = [
   {
-    code: "plano21",
-    name: "Plano 21",
+    code: "prata",
+    name: "Prata",
     min: 1000000,
     max: 24999999,
     guarantee: 0.21,
@@ -60,8 +41,8 @@ const investmentTiers = [
     benefit: "21% ao ano, pago mensalmente durante 12 meses.",
   },
   {
-    code: "plano23",
-    name: "Plano 23",
+    code: "ouro",
+    name: "Ouro",
     min: 25000000,
     max: 74999999,
     guarantee: 0.23,
@@ -69,8 +50,8 @@ const investmentTiers = [
     benefit: "23% ao ano, pago mensalmente durante 12 meses.",
   },
   {
-    code: "plano25",
-    name: "Plano 25",
+    code: "diamante",
+    name: "Diamante",
     min: 75000000,
     max: BUS_PRICE,
     guarantee: 0.25,
@@ -104,30 +85,25 @@ type InvestorAccount = {
   status?: string;
 };
 
-type InvestorReference = {
-  amount: number | string;
-  created_at?: string;
-  entity: string;
-  expires_at?: string;
-  id: string;
-  reference: string;
-  reference_url: string;
-  status: string;
-};
-
 type InvestorInvestment = {
   amount: number | string;
-  asset_code: string;
+  asset_code?: string;
   created_at?: string;
+  deposit_bank_account?: string | null;
+  deposit_bank_iban?: string | null;
+  deposit_bank_name?: string | null;
   expected_annual_return: number | string;
   expected_monthly_return: number | string;
   id: string;
   minimum_annual_return: number | string;
   package_code: string;
   package_name: string;
-  quota: number | string;
-  reference?: InvestorReference | InvestorReference[] | null;
-  route_label: string;
+  proof_file_name?: string | null;
+  proof_file_size?: number | string | null;
+  proof_file_type?: string | null;
+  proof_uploaded_at?: string | null;
+  quota?: number | string;
+  route_label?: string;
   status: string;
 };
 
@@ -175,27 +151,6 @@ const investSteps = [
   },
 ];
 
-const investorActivity = [
-  {
-    title: "Pagamento de Maio liquidado",
-    detail: "Retorno mensal enviado para BAI final 4421.",
-    time: "09:40",
-    tone: "green",
-  },
-  {
-    title: "Relatorio operacional anexado",
-    detail: "Resumo de operacao e aquisicoes partilhado com investidores.",
-    time: "Ontem",
-    tone: "blue",
-  },
-  {
-    title: "Contrato validado",
-    detail: "Compliance aprovou a adesao ao ciclo 2026.",
-    time: "28 Mai",
-    tone: "orange",
-  },
-];
-
 const fleetSignals = [
   { label: "Frota gerida", value: "34", detail: "4 proprios + 30 externos" },
   { label: "Receita 2025", value: "367M", detail: "Kz auditados" },
@@ -204,31 +159,25 @@ const fleetSignals = [
 
 const acquisitionAssets = [
   {
-    title: "Autocarro urbano novo",
-    detail: "Unidade prevista para reforco de rota.",
-    status: "Imagem em breve",
+    title: "Autocarro 1",
+    detail: "Unidade nova para aquisicao.",
+    image: "/adiquirir/1.jpeg",
   },
   {
-    title: "Autocarro interprovincial novo",
-    detail: "Unidade prevista para rotas de longa distancia.",
-    status: "Imagem em breve",
+    title: "Autocarro 2",
+    detail: "Unidade nova para aquisicao.",
+    image: "/adiquirir/2.jpeg",
   },
   {
-    title: "Autocarro executivo novo",
-    detail: "Unidade prevista para servico premium.",
-    status: "Imagem em breve",
+    title: "Autocarro 3",
+    detail: "Unidade nova para aquisicao.",
+    image: "/adiquirir/3.jpeg",
   },
-];
-
-const dashboardNavItems: {
-  key: DashboardTab;
-  label: string;
-  icon: typeof Gauge;
-}[] = [
-  { key: "overview", label: "Visao geral", icon: Gauge },
-  { key: "returns", label: "Retornos", icon: BarChart3 },
-  { key: "contract", label: "Contrato", icon: FileCheck2 },
-  { key: "account", label: "Conta", icon: CreditCard },
+  {
+    title: "Autocarro 4",
+    detail: "Unidade nova para aquisicao.",
+    image: "/adiquirir/4.jpeg",
+  },
 ];
 
 const heroWashStyle = {
@@ -256,26 +205,6 @@ const formatPercent = (value: number) =>
     minimumFractionDigits: value < 1 ? 1 : 0,
   })}%`;
 
-function getReferencePrefix(packageCode: string) {
-  const prefixes: Record<string, string> = {
-    plano21: "INV-21",
-    plano23: "INV-23",
-    plano25: "INV-25",
-  };
-
-  return prefixes[packageCode] || `INV-${packageCode.slice(0, 3).toUpperCase()}`;
-}
-
-function getInvestmentReference(investment?: InvestorInvestment | null) {
-  if (!investment?.reference) {
-    return null;
-  }
-
-  return Array.isArray(investment.reference)
-    ? investment.reference[0] ?? null
-    : investment.reference;
-}
-
 function statusText(status?: string) {
   const labels: Record<string, string> = {
     active: "Ativo",
@@ -292,15 +221,6 @@ function statusText(status?: string) {
   return labels[status || ""] || status || "Pendente";
 }
 
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
 async function copyText(value: string) {
   if (!value) {
     return;
@@ -311,7 +231,7 @@ async function copyText(value: string) {
     return;
   }
 
-  window.prompt("Copie a referencia:", value);
+  window.prompt("Copie:", value);
 }
 
 function clampInvestment(value: number) {
@@ -667,21 +587,22 @@ function AssetsToAcquire() {
               Novos autocarros que a Nawabus pretende comprar.
             </h2>
           </div>
-          <StatusPill tone="slate">Fotos finais em preparacao</StatusPill>
+          <StatusPill tone="slate">4 unidades</StatusPill>
         </div>
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {acquisitionAssets.map((asset) => (
             <div
               className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-950/5"
               key={asset.title}
             >
-              <div className="flex aspect-[4/3] items-center justify-center bg-slate-100">
-                <div className="text-center">
-                  <CalendarClock className="mx-auto h-8 w-8 text-orange-600" />
-                  <p className="mt-3 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                    {asset.status}
-                  </p>
-                </div>
+              <div className="relative aspect-[4/3] bg-slate-100">
+                <Image
+                  alt={asset.title}
+                  className="object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                  src={asset.image}
+                />
               </div>
               <div className="p-5">
                 <p className="text-lg font-black text-slate-950">
@@ -699,11 +620,7 @@ function AssetsToAcquire() {
   );
 }
 
-function PublicSimulationSection({
-  onAuthOpen,
-}: {
-  onAuthOpen: (mode: AuthMode) => void;
-}) {
+function PublicSimulationSection() {
   const [amount, setAmount] = useState(5000000);
   const [amountDraft, setAmountDraft] = useState(String(amount));
   const plan = useMemo(
@@ -871,284 +788,13 @@ function PublicSimulationSection({
             </p>
           </div>
 
-          <ActionButton
-            className="mt-5 w-full"
-            icon={<UserPlus className="h-4 w-4" />}
-            onClick={() => onAuthOpen("signup")}
-            tone="secondary"
-          >
-            Abrir simulacao no portal
-          </ActionButton>
         </div>
       </div>
     </section>
   );
 }
 
-function AuthPanel({
-  mode,
-  onModeChange,
-  onComplete,
-}: {
-  mode: AuthMode;
-  onModeChange: (mode: AuthMode) => void;
-  onComplete: (session: InvestorSession) => void;
-}) {
-  const isSignup = mode === "signup";
-  const [form, setForm] = useState({
-    bankName: "",
-    email: "",
-    fullName: "",
-    iban: "",
-    nationalId: "",
-    password: "",
-    phone: "",
-  });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  function updateField(field: keyof typeof form, value: string) {
-    setForm((current) => ({ ...current, [field]: value }));
-  }
-
-  async function submitAuth(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      if (isSignup) {
-        const accountResponse = await fetch("/api/investor/accounts", {
-          body: JSON.stringify(form),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        const accountResult = await accountResponse.json();
-
-        if (!accountResponse.ok) {
-          throw new Error(accountResult.error || "Nao foi possivel criar a conta.");
-        }
-      }
-
-      const sessionResponse = await fetch("/api/investor/session", {
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-        }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
-      const sessionResult = await sessionResponse.json();
-
-      if (!sessionResponse.ok) {
-        throw new Error(sessionResult.error || "Nao foi possivel iniciar sessao.");
-      }
-
-      onComplete(sessionResult);
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Nao foi possivel concluir o acesso.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <section
-      className="border-t border-slate-200 bg-slate-50 px-4 py-20 sm:px-6 lg:px-8"
-      id="entrar"
-    >
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_28rem] lg:items-start">
-        <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
-            Acesso demo
-          </p>
-          <h2 className="mt-4 max-w-2xl text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
-            Uma area privada para mostrar investimento, referencias e retornos.
-          </h2>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
-            O fluxo simula o que o investidor precisa ver: pacote, valor
-            investido, referencia, pagamentos mensais e conta de recebimento.
-          </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {investSteps.map((step) => {
-              const Icon = step.icon;
-              return (
-                <div
-                  className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-950/5 transition hover:-translate-y-1 hover:border-orange-200"
-                  key={step.title}
-                >
-                  <Icon className="h-5 w-5 text-orange-600" />
-                  <p className="mt-3 text-sm font-black text-slate-950">
-                    {step.title}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    {step.detail}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <form
-          className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/10"
-          onSubmit={submitAuth}
-        >
-          <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
-            <button
-              className={`rounded-md px-4 py-3 text-sm font-black transition ${
-                !isSignup
-                  ? "bg-slate-950 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-white"
-              }`}
-              onClick={() => onModeChange("login")}
-              type="button"
-            >
-              Entrar
-            </button>
-            <button
-              className={`rounded-md px-4 py-3 text-sm font-black transition ${
-                isSignup
-                  ? "bg-slate-950 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-white"
-              }`}
-              onClick={() => onModeChange("signup")}
-              type="button"
-            >
-              Criar conta
-            </button>
-          </div>
-
-          <div className="mt-5 space-y-4">
-            {isSignup ? (
-              <label className="block text-sm font-bold text-slate-700">
-                Nome completo
-                <input
-                  className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                  onChange={(event) => updateField("fullName", event.target.value)}
-                  placeholder="Nome do investidor"
-                  required
-                  type="text"
-                  value={form.fullName}
-                />
-              </label>
-            ) : null}
-            <label className="block text-sm font-bold text-slate-700">
-              Email
-              <input
-                className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                onChange={(event) => updateField("email", event.target.value)}
-                placeholder="email@exemplo.com"
-                required
-                type="email"
-                value={form.email}
-              />
-            </label>
-            <label className="block text-sm font-bold text-slate-700">
-              Palavra-passe
-              <input
-                className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                minLength={6}
-                onChange={(event) => updateField("password", event.target.value)}
-                placeholder="Minimo 6 caracteres"
-                required
-                type="password"
-                value={form.password}
-              />
-            </label>
-            {isSignup ? (
-              <>
-                <label className="block text-sm font-bold text-slate-700">
-                  Telefone
-                  <input
-                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                    onChange={(event) => updateField("phone", event.target.value)}
-                    placeholder="923000000"
-                    required
-                    type="tel"
-                    value={form.phone}
-                  />
-                </label>
-                <label className="block text-sm font-bold text-slate-700">
-                  Documento fiscal
-                  <input
-                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                    onChange={(event) => updateField("nationalId", event.target.value)}
-                    placeholder="BI ou NIF"
-                    type="text"
-                    value={form.nationalId}
-                  />
-                </label>
-                <div className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr]">
-                  <label className="block text-sm font-bold text-slate-700">
-                    Banco
-                    <select
-                      className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                      onChange={(event) => updateField("bankName", event.target.value)}
-                      value={form.bankName}
-                    >
-                      <option value="">Selecionar banco</option>
-                      <option value="BAI">BAI</option>
-                      <option value="BFA">BFA</option>
-                      <option value="Banco Atlantico">Banco Atlantico</option>
-                      <option value="BIC">BIC</option>
-                      <option value="Standard Bank">Standard Bank</option>
-                    </select>
-                  </label>
-                  <label className="block text-sm font-bold text-slate-700">
-                    IBAN
-                    <input
-                      className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-                      onChange={(event) => updateField("iban", event.target.value)}
-                      placeholder="AO06..."
-                      type="text"
-                      value={form.iban}
-                    />
-                  </label>
-                </div>
-              </>
-            ) : null}
-          </div>
-
-          {error ? (
-            <p className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-800">
-              {error}
-            </p>
-          ) : null}
-
-          <ActionButton
-            className="mt-6 w-full"
-            disabled={loading}
-            icon={
-              loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <LayoutDashboard className="h-4 w-4" />
-              )
-            }
-            tone="dark"
-            type="submit"
-          >
-            {isSignup ? "Criar e abrir portal" : "Abrir portal"}
-          </ActionButton>
-          <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-            A conta fica ligada ao registo de investidor e ao historico de referencias.
-          </p>
-        </form>
-      </div>
-    </section>
-  );
-}
-
-function Landing({
-  onAuthOpen,
-}: {
-  onAuthOpen: (mode: AuthMode) => void;
-}) {
+function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   function scrollToSimulator() {
@@ -1195,28 +841,10 @@ function Landing({
               <a className="rounded-lg px-3 py-2 hover:bg-white/10" href="#sinais">
                 Sinais
               </a>
-              <a className="rounded-lg px-3 py-2 hover:bg-white/10" href="#entrar">
-                Portal
+              <a className="rounded-lg px-3 py-2 hover:bg-white/10" href="#login">
+                Login
               </a>
             </nav>
-            <div className="hidden items-center gap-2 sm:flex">
-              <button
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 px-4 text-sm font-bold text-white transition hover:bg-white/10"
-                onClick={() => onAuthOpen("login")}
-                type="button"
-              >
-                <Wallet className="h-4 w-4" />
-                Entrar
-              </button>
-              <button
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-cyan-300 px-4 text-sm font-black text-slate-950 transition hover:bg-cyan-200"
-                onClick={() => onAuthOpen("signup")}
-                type="button"
-              >
-                <UserPlus className="h-4 w-4" />
-                Criar conta
-              </button>
-            </div>
             <button
               aria-label="Abrir menu"
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 text-white sm:hidden"
@@ -1229,20 +857,18 @@ function Landing({
 
           {menuOpen ? (
             <div className="mt-3 grid gap-2 rounded-lg border border-white/14 bg-slate-950/90 p-3 text-sm font-black backdrop-blur-2xl sm:hidden">
-              <button
-                className="rounded-lg bg-white/10 px-4 py-3 text-left"
-                onClick={() => onAuthOpen("login")}
-                type="button"
-              >
-                Entrar
-              </button>
-              <button
-                className="rounded-lg bg-cyan-300 px-4 py-3 text-left text-slate-950"
-                onClick={() => onAuthOpen("signup")}
-                type="button"
-              >
-                Criar conta
-              </button>
+              <a className="rounded-lg bg-white/10 px-4 py-3" href="#modelo">
+                Modelo
+              </a>
+              <a className="rounded-lg bg-white/10 px-4 py-3" href="#simulador">
+                Simulador
+              </a>
+              <a className="rounded-lg bg-white/10 px-4 py-3" href="#sinais">
+                Sinais
+              </a>
+              <a className="rounded-lg bg-white/10 px-4 py-3" href="#login">
+                Login
+              </a>
             </div>
           ) : null}
 
@@ -1268,11 +894,15 @@ function Landing({
                   Simular adesao
                 </ActionButton>
                 <ActionButton
-                  icon={<LayoutDashboard className="h-4 w-4" />}
-                  onClick={() => onAuthOpen("login")}
+                  icon={<LockKeyhole className="h-4 w-4" />}
+                  onClick={() =>
+                    document.getElementById("login")?.scrollIntoView({
+                      behavior: "smooth",
+                    })
+                  }
                   tone="ghost"
                 >
-                  Ver portal demo
+                  Entrar
                 </ActionButton>
               </div>
             </div>
@@ -1307,7 +937,7 @@ function Landing({
         </div>
       </section>
 
-      <PublicSimulationSection onAuthOpen={onAuthOpen} />
+      <PublicSimulationSection />
 
       <TierLadder />
 
@@ -1382,6 +1012,166 @@ function Landing({
   );
 }
 
+function LoginSection({
+  onComplete,
+}: {
+  onComplete: (session: InvestorSession) => void;
+}) {
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submitLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/investor/session", {
+        body: JSON.stringify(form),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Nao foi possivel iniciar sessao.");
+      }
+
+      onComplete(result);
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : "Nao foi possivel iniciar sessao.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section
+      className="border-t border-slate-200 bg-slate-50 px-4 py-20 sm:px-6 lg:px-8"
+      id="login"
+    >
+      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_26rem] lg:items-center">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">
+            Clube privado
+          </p>
+          <h2 className="mt-4 max-w-2xl text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
+            Login para investidores aprovados.
+          </h2>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
+            As contas sao abertas pela Nawabus para pessoas selecionadas. Se ja
+            recebeu acesso, entre com o email e palavra-passe fornecidos.
+          </p>
+        </div>
+
+        <form
+          className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/10"
+          onSubmit={submitLogin}
+        >
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+            Acesso ao portal
+          </p>
+          <label className="mt-5 block text-sm font-bold text-slate-700">
+            Email
+            <input
+              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+              onChange={(event) =>
+                setForm((current) => ({ ...current, email: event.target.value }))
+              }
+              placeholder="email@exemplo.com"
+              required
+              type="email"
+              value={form.email}
+            />
+          </label>
+          <label className="mt-4 block text-sm font-bold text-slate-700">
+            Palavra-passe
+            <input
+              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+              minLength={6}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  password: event.target.value,
+                }))
+              }
+              placeholder="Minimo 6 caracteres"
+              required
+              type="password"
+              value={form.password}
+            />
+          </label>
+
+          {error ? (
+            <p className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-800">
+              {error}
+            </p>
+          ) : null}
+
+          <ActionButton
+            className="mt-6 w-full"
+            disabled={loading}
+            icon={
+              loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LockKeyhole className="h-4 w-4" />
+              )
+            }
+            tone="dark"
+            type="submit"
+          >
+            Entrar no portal
+          </ActionButton>
+          <p className="mt-4 text-center text-xs leading-5 text-slate-500">
+            Sem abertura publica de conta. Acesso apenas por convite.
+          </p>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+const bankAccounts = [
+  {
+    name: "BAI",
+    account: "129211703.10.001",
+    iban: "AO06.0040.0000.2921.1703.1012.5",
+  },
+  {
+    name: "BFA",
+    account: "33608 1032 30 001",
+    iban: "AO06.0006.0000.3608.1082.3017.5",
+  },
+  {
+    name: "Standard Bank",
+    account: "1003529909",
+    iban: "AO06.0060.0140.0100.3529.9093.5",
+  },
+  {
+    name: "Atlantico",
+    account: "206468509.10.001",
+    iban: "AO06.0055.0000.0646.8509.1019.3",
+  },
+];
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Nao foi possivel ler o ficheiro."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function Dashboard({
   onLogout,
   session,
@@ -1390,22 +1180,19 @@ function Dashboard({
   session: InvestorSession;
 }) {
   const [amount, setAmount] = useState(5000000);
+  const [amountDraft, setAmountDraft] = useState("5000000");
   const [account, setAccount] = useState(session.account);
-  const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [investments, setInvestments] = useState<InvestorInvestment[]>([]);
   const [dashboardError, setDashboardError] = useState("");
   const [dataLoading, setDataLoading] = useState(true);
-  const [creatingReference, setCreatingReference] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState("Mai");
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedBankName, setSelectedBankName] = useState(bankAccounts[0].name);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const plan = useMemo(() => calculateInvestmentPlan(amount), [amount]);
-  const latestInvestment = investments[0] ?? null;
-  const latestReference = getInvestmentReference(latestInvestment);
-
-  const progress = 42;
-  const selectedReturn =
-    monthlyReturns.find((item) => item.month === selectedMonth) ??
-    monthlyReturns[4];
+  const selectedBank =
+    bankAccounts.find((bank) => bank.name === selectedBankName) || bankAccounts[0];
 
   async function refreshInvestments() {
     setDashboardError("");
@@ -1420,27 +1207,66 @@ function Dashboard({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Nao foi possivel carregar o dashboard.");
+        throw new Error(result.error || "Nao foi possivel carregar o portal.");
       }
 
       setAccount(result.account || session.account);
       setInvestments(result.investments || []);
     } catch (error) {
       setDashboardError(
-        error instanceof Error ? error.message : "Nao foi possivel carregar o dashboard.",
+        error instanceof Error ? error.message : "Nao foi possivel carregar o portal.",
       );
     } finally {
       setDataLoading(false);
     }
   }
 
-  async function createInvestmentReference() {
+  function commitAmount(value = amountDraft) {
+    const nextAmount = normalizeInvestment(Number(value));
+    setAmount(nextAmount);
+    setAmountDraft(String(nextAmount));
+  }
+
+  function updateAmountDraft(value: string) {
+    const digits = value.replace(/\D/g, "");
+    setAmountDraft(digits);
+
+    const nextAmount = Number(digits);
+    if (nextAmount >= MIN_INVESTMENT && nextAmount <= BUS_PRICE) {
+      setAmount(normalizeInvestment(nextAmount));
+    }
+  }
+
+  async function submitProof(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setDashboardError("");
-    setCreatingReference(true);
+    setSuccessMessage("");
+
+    if (!proofFile) {
+      setDashboardError("Carregue o comprovativo da transferencia.");
+      return;
+    }
+
+    if (proofFile.size > 5 * 1024 * 1024) {
+      setDashboardError("O comprovativo deve ter no maximo 5 MB.");
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
+      const proofFileDataUrl = await readFileAsDataUrl(proofFile);
       const response = await fetch("/api/investor/investments", {
-        body: JSON.stringify({ amount: plan.amount }),
+        body: JSON.stringify({
+          amount: plan.amount,
+          depositBankAccount: selectedBank.account,
+          depositBankIban: selectedBank.iban,
+          depositBankName: selectedBank.name,
+          proofFileDataUrl,
+          proofFileName: proofFile.name,
+          proofFileSize: proofFile.size,
+          proofFileType: proofFile.type || "application/octet-stream",
+        }),
         headers: {
           Authorization: `Bearer ${session.accessToken}`,
           "Content-Type": "application/json",
@@ -1450,18 +1276,19 @@ function Dashboard({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Nao foi possivel gerar a referencia.");
+        throw new Error(result.error || "Nao foi possivel enviar o comprovativo.");
       }
 
       setAccount(result.account || account);
       setInvestments((current) => [result.investment, ...current]);
-      setActiveTab("contract");
+      setProofFile(null);
+      setSuccessMessage("Comprovativo enviado. A Nawabus vai confirmar o deposito.");
     } catch (error) {
       setDashboardError(
-        error instanceof Error ? error.message : "Nao foi possivel gerar a referencia.",
+        error instanceof Error ? error.message : "Nao foi possivel enviar o comprovativo.",
       );
     } finally {
-      setCreatingReference(false);
+      setSubmitting(false);
     }
   }
 
@@ -1473,974 +1300,273 @@ function Dashboard({
   }, [session.accessToken]);
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[18rem_1fr]">
-        <aside className="hidden border-r border-white/10 bg-slate-950 px-4 py-5 text-white lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
           <Image
             alt="Nawabus"
-            height={38}
-            src="/nawabus_logo_white.webp"
-            width={150}
+            height={34}
+            src="/nawabus_logo_orange.webp"
+            width={136}
           />
-          <nav className="mt-8 grid gap-2 text-sm font-black text-slate-300">
-            {dashboardNavItems.map(({ key, label, icon: NavIcon }) => {
+          <button
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-slate-700"
+            onClick={onLogout}
+            type="button"
+          >
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto grid max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-orange-600">
+            Portal do investidor
+          </p>
+          <h1 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">
+            Ola, {account.full_name}
+          </h1>
+          <p className="mt-2 text-base leading-7 text-slate-600">
+            Escolha o pacote, deposite numa das contas Nawabus e envie o comprovativo.
+          </p>
+        </section>
+
+        {dashboardError ? (
+          <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm font-bold text-orange-800">
+            {dashboardError}
+          </div>
+        ) : null}
+
+        {successMessage ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
+            {successMessage}
+          </div>
+        ) : null}
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="text-xl font-black text-slate-950">1. Escolha o pacote</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {investmentTiers.map((tier) => {
+              const isSelected = plan.tier.name === tier.name;
               return (
                 <button
-                  className={`flex items-center gap-3 rounded-lg px-3 py-3 text-left transition ${
-                    activeTab === key
-                      ? "bg-cyan-300 text-slate-950"
-                      : "hover:bg-white/8"
+                  className={`rounded-lg border p-4 text-left transition ${
+                    isSelected
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-slate-200 bg-white text-slate-950"
                   }`}
-                  key={key}
-                  onClick={() => setActiveTab(key)}
+                  key={tier.name}
+                  onClick={() => {
+                    const nextAmount = normalizeInvestment(tier.min);
+                    setAmount(nextAmount);
+                    setAmountDraft(String(nextAmount));
+                  }}
                   type="button"
                 >
-                  <NavIcon className="h-4 w-4" />
-                  {label}
+                  <span className="block text-lg font-black">{tier.name}</span>
+                  <span className="mt-2 block text-sm">
+                    {formatKz(tier.min)} - {formatKz(tier.max)}
+                  </span>
+                  <span className="mt-2 block text-sm font-black">
+                    {formatPercent(tier.guarantee * 100)} ao ano
+                  </span>
                 </button>
               );
             })}
-          </nav>
-          <div className="mt-8 rounded-lg border border-white/10 bg-white/[0.06] p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
-                Conta
-              </p>
-              <Activity className="h-4 w-4 text-emerald-300" />
-            </div>
-            <p className="mt-2 text-sm font-black">{account.full_name}</p>
-            <p className="mt-1 truncate text-xs font-bold text-slate-400">
-              {account.email}
-            </p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/12">
-              <div
-                className="h-full rounded-full bg-cyan-300"
-                style={{ width: `${progress}%` }}
+          </div>
+
+          <label className="mt-5 block text-sm font-bold text-slate-700">
+            Valor a investir
+            <div className="mt-2 flex gap-2">
+              <input
+                className="h-12 min-w-0 flex-1 rounded-lg border border-slate-200 px-4 text-lg font-black outline-none focus:border-cyan-400"
+                inputMode="numeric"
+                onBlur={() => commitAmount()}
+                onChange={(event) => updateAmountDraft(event.target.value)}
+                onFocus={(event) => event.target.select()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    commitAmount();
+                  }
+                }}
+                type="text"
+                value={amountDraft}
               />
+              <button
+                className="h-12 rounded-lg bg-slate-950 px-4 text-sm font-black text-white"
+                onClick={() => commitAmount()}
+                type="button"
+              >
+                OK
+              </button>
             </div>
-            <p className="mt-2 text-xs font-bold text-slate-400">
-              {investments.length} investimento(s)
-            </p>
+          </label>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <InfoTile label="Pacote" value={plan.tier.name} />
+            <InfoTile label="Recebe por mes" value={formatKz(plan.monthlyReturn)} />
+            <InfoTile label="Total em 12 meses" value={formatKz(plan.annualReturn)} />
           </div>
-        </aside>
+        </section>
 
-        <div className="min-w-0">
-          <header className="sticky top-0 z-20 border-b border-slate-200 bg-slate-100/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-600">
-                  Portal do investidor
-                </p>
-                <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
-                  Dashboard Nawabus
-                </h1>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="hidden h-10 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 md:flex">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-950 text-xs text-white">
-                    {getInitials(account.full_name)}
-                  </span>
-                  {account.full_name}
-                </div>
-                <button
-                  aria-label="Notificacoes"
-                  className="hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-cyan-300 sm:inline-flex"
-                  type="button"
-                >
-                  <Bell className="h-4 w-4" />
-                </button>
-                <button
-                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-orange-200 hover:bg-orange-50"
-                  onClick={onLogout}
-                  type="button"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sair
-                </button>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
-              {dashboardNavItems.map(({ key, label, icon: NavIcon }) => {
-                return (
-                  <button
-                    className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg text-xs font-black transition ${
-                      activeTab === key
-                        ? "bg-slate-950 text-white"
-                        : "bg-white text-slate-600"
-                      }`}
-                    key={key}
-                    onClick={() => setActiveTab(key)}
-                    type="button"
-                  >
-                    <NavIcon className="h-4 w-4" />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </header>
-
-          <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-            {dashboardError ? (
-              <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm font-bold text-orange-800">
-                {dashboardError}
-              </div>
-            ) : null}
-
-            {activeTab === "overview" ? (
-              <>
-                <section className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-white shadow-2xl shadow-slate-950/10">
-                  <div className="relative p-5 sm:p-7">
-                    <div
-                      className="absolute inset-0 opacity-40"
-                      style={interfaceGridStyle}
-                    />
-                    <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                      <div>
-                        <p className="inline-flex items-center gap-2 rounded-lg bg-emerald-300/12 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-emerald-100 ring-1 ring-emerald-300/20">
-                          <CheckCircle2 className="h-4 w-4" />
-                          Conta ligada a base de dados
-                        </p>
-                        <h2 className="mt-4 max-w-3xl text-3xl font-black tracking-tight sm:text-5xl">
-                          Escolha o pacote e gere a referencia de investimento.
-                        </h2>
-                        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                          O dashboard grava a conta, o investimento escolhido e
-                          uma referencia com prefixo do pacote selecionado.
-                        </p>
-                      </div>
-                      <ActionButton
-                        disabled={creatingReference}
-                        icon={
-                          creatingReference ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Wallet className="h-4 w-4" />
-                          )
-                        }
-                        onClick={createInvestmentReference}
-                        tone="secondary"
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="text-xl font-black text-slate-950">2. Deposite numa conta Nawabus</h2>
+          <div className="mt-4 grid gap-3">
+            {bankAccounts.map((bank) => (
+              <label
+                className={`block rounded-lg border p-4 ${
+                  selectedBank.name === bank.name
+                    ? "border-slate-950 bg-slate-50"
+                    : "border-slate-200 bg-white"
+                }`}
+                key={bank.name}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    checked={selectedBank.name === bank.name}
+                    className="mt-1 h-5 w-5 accent-orange-500"
+                    name="depositBank"
+                    onChange={() => setSelectedBankName(bank.name)}
+                    type="radio"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-black text-slate-950">{bank.name}</p>
+                    <p className="mt-2 break-words text-sm text-slate-700">
+                      Conta: <strong>{bank.account}</strong>
+                    </p>
+                    <p className="mt-1 break-words text-sm text-slate-700">
+                      IBAN: <strong>{bank.iban}</strong>
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          copyText(bank.account);
+                        }}
+                        type="button"
                       >
-                        Gerar referencia
-                      </ActionButton>
+                        Copiar conta
+                      </button>
+                      <button
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          copyText(bank.iban);
+                        }}
+                        type="button"
+                      >
+                        Copiar IBAN
+                      </button>
                     </div>
-                  </div>
-                </section>
-
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <Metric
-                    detail={`${formatPercent(plan.tier.guarantee * 100)} ao ano durante 12 meses.`}
-                    icon={<Wallet className="h-5 w-5" />}
-                    label="Capital investido"
-                    value={formatKz(plan.amount)}
-                  />
-                  <Metric
-                    detail="Capital + rendimento dividido em 12 pagamentos."
-                    icon={<TrendingUp className="h-5 w-5" />}
-                    label="Retorno mensal"
-                    value={formatKz(plan.monthlyReturn)}
-                  />
-                  <Metric
-                    detail="Rendimento mensal separado do capital."
-                    icon={<CalendarClock className="h-5 w-5" />}
-                    label="Rendimento mensal"
-                    value={formatKz(plan.monthlyMinimumReturn)}
-                  />
-                  <Metric
-                    detail="Rendimento total esperado no ano."
-                    icon={<CircleDollarSign className="h-5 w-5" />}
-                    label="Rendimento anual"
-                    value={formatKz(plan.minimumAnnualReturn)}
-                  />
-                </section>
-
-                <section className="grid gap-6 xl:grid-cols-[24rem_1fr]">
-                  <Simulator plan={plan} setAmount={setAmount} />
-                  <div className="grid gap-6">
-                    <ReferenceCard
-                      creating={creatingReference}
-                      investment={latestInvestment}
-                      onCopyReference={() =>
-                        latestReference ? copyText(latestReference.reference) : undefined
-                      }
-                      onCopyUrl={() =>
-                        latestReference ? copyText(latestReference.reference_url) : undefined
-                      }
-                      onCreate={createInvestmentReference}
-                      plan={plan}
-                    />
-                    <ReturnsChart
-                      monthlyReturn={plan.monthlyReturn}
-                      selectedMonth={selectedMonth}
-                      setSelectedMonth={setSelectedMonth}
-                    />
-                  </div>
-                </section>
-              </>
-            ) : null}
-
-            {activeTab === "returns" ? (
-              <section className="grid gap-6 xl:grid-cols-[1fr_22rem]">
-                <ReturnsChart
-                  monthlyReturn={plan.monthlyReturn}
-                  selectedMonth={selectedMonth}
-                  setSelectedMonth={setSelectedMonth}
-                />
-                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-                    Mes selecionado
-                  </p>
-                  <h2 className="mt-2 text-3xl font-black text-slate-950">
-                    {selectedReturn.month}
-                  </h2>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    Valor esperado de {formatKz(plan.monthlyReturn)} para este
-                    pacote, com estado {selectedReturn.status.toLowerCase()}.
-                  </p>
-                  <div className="mt-5 grid gap-3">
-                    <Metric
-                      detail="Capital + rendimento mensal do plano."
-                      icon={<Banknote className="h-5 w-5" />}
-                      label="Pagamento esperado"
-                      value={formatKz(plan.monthlyReturn)}
-                    />
-                    <Metric
-                      detail={`${formatPercent(plan.tier.guarantee * 100)} ao ano para o ${plan.tier.name}.`}
-                      icon={<LineChart className="h-5 w-5" />}
-                      label="Rendimento anual"
-                      value={formatKz(plan.minimumAnnualReturn)}
-                    />
                   </div>
                 </div>
-              </section>
-            ) : null}
-
-            {activeTab === "contract" ? (
-              <section className="grid gap-6 xl:grid-cols-[1fr_24rem]">
-                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-                        Referencia ativa
-                      </p>
-                      <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                        {latestReference?.reference || "Ainda sem referencia"}
-                      </h2>
-                    </div>
-                    <StatusPill tone={latestReference ? "orange" : "slate"}>
-                      {statusText(latestReference?.status)}
-                    </StatusPill>
-                  </div>
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    <Metric
-                      detail="Valor do investimento selecionado."
-                      icon={<Clock3 className="h-5 w-5" />}
-                      label="Capital"
-                      value={formatKz(Number(latestInvestment?.amount || plan.amount))}
-                    />
-                    <Metric
-                      detail="Registo interno do investimento."
-                      icon={<LockKeyhole className="h-5 w-5" />}
-                      label="Codigo"
-                      value={latestInvestment?.asset_code || "NB-2026-014"}
-                    />
-                    <Metric
-                      detail="Conta bancaria de recebimento mensal."
-                      icon={<CreditCard className="h-5 w-5" />}
-                      label="Pagamento"
-                      value={account.bank_name || "Conta pendente"}
-                    />
-                  </div>
-                  {latestReference ? (
-                    <div className="mt-6 rounded-lg border border-orange-200 bg-orange-50 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-xs font-black uppercase tracking-[0.16em] text-orange-700">
-                            Dados para pagamento
-                          </p>
-                          <p className="mt-2 text-sm font-bold text-slate-700">
-                            Entidade {latestReference.entity} | Valor{" "}
-                            {formatKz(Number(latestReference.amount))}
-                          </p>
-                        </div>
-                        <button
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-black text-white"
-                          onClick={() => copyText(latestReference.reference_url)}
-                          type="button"
-                        >
-                          <Copy className="h-4 w-4" />
-                          Copiar link
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
-                        <tr>
-                          <th className="px-4 py-3">Marco</th>
-                          <th className="px-4 py-3">Data</th>
-                          <th className="px-4 py-3">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          ["Conta criada", "Agora", statusText(account.status)],
-                          [
-                            "Pacote escolhido",
-                            latestInvestment?.package_name || plan.tier.name,
-                            latestInvestment ? "Gravado" : "Por gerar",
-                          ],
-                          [
-                            "Referencia de pagamento",
-                            latestReference?.reference || "-",
-                            statusText(latestReference?.status),
-                          ],
-                          ["Contrato final", "Apos pagamento", "Em analise"],
-                        ].map(([milestone, date, status]) => (
-                          <tr className="border-t border-slate-200" key={milestone}>
-                            <td className="px-4 py-3 font-black">{milestone}</td>
-                            <td className="px-4 py-3 text-slate-600">{date}</td>
-                            <td className="px-4 py-3">
-                              <StatusPill
-                                tone={status === "Pago" || status === "Concluido" || status === "Gravado" ? "green" : "orange"}
-                              >
-                                {status}
-                              </StatusPill>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <ActivityFeed />
-              </section>
-            ) : null}
-
-            {activeTab === "account" ? (
-              <section className="grid gap-6 xl:grid-cols-[24rem_1fr]">
-                <AccountPanel account={account} />
-                <InvestmentsTable
-                  dataLoading={dataLoading}
-                  investments={investments}
-                  onCopy={(value) => copyText(value)}
-                />
-              </section>
-            ) : null}
-
-            {activeTab === "overview" || activeTab === "returns" ? (
-              <section className="grid gap-6 xl:grid-cols-2">
-                <PaymentsTable monthlyReturn={plan.monthlyReturn} />
-                <ActivityFeed />
-              </section>
-            ) : null}
+              </label>
+            ))}
           </div>
-        </div>
+        </section>
+
+        <form
+          className="rounded-lg border border-slate-200 bg-white p-5"
+          onSubmit={submitProof}
+        >
+          <h2 className="text-xl font-black text-slate-950">3. Envie o comprovativo</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Depois da transferencia, carregue uma foto ou PDF do comprovativo.
+          </p>
+          <label className="mt-5 block text-sm font-bold text-slate-700">
+            Comprovativo
+            <input
+              accept="image/*,.pdf"
+              className="mt-2 block w-full rounded-lg border border-slate-200 bg-white p-3 text-sm"
+              onChange={(event) => setProofFile(event.target.files?.[0] || null)}
+              required
+              type="file"
+            />
+          </label>
+          {proofFile ? (
+            <p className="mt-3 text-sm font-bold text-slate-600">
+              Ficheiro: {proofFile.name}
+            </p>
+          ) : null}
+          <ActionButton
+            className="mt-5 w-full"
+            disabled={submitting}
+            icon={
+              submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileCheck2 className="h-4 w-4" />
+              )
+            }
+            tone="dark"
+            type="submit"
+          >
+            Enviar comprovativo
+          </ActionButton>
+        </form>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-black text-slate-950">Comprovativos enviados</h2>
+            {dataLoading ? <Loader2 className="h-5 w-5 animate-spin text-orange-600" /> : null}
+          </div>
+          <div className="mt-4 grid gap-3">
+            {investments.length === 0 ? (
+              <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+                Ainda nao enviou nenhum comprovativo.
+              </p>
+            ) : (
+              investments.map((investment) => (
+                <div
+                  className="rounded-lg border border-slate-200 p-4"
+                  key={investment.id}
+                >
+                  <p className="text-base font-black text-slate-950">
+                    {investment.package_name} - {formatKz(Number(investment.amount))}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Estado: <strong>{statusText(investment.status)}</strong>
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Comprovativo: <strong>{investment.proof_file_name || "Enviado"}</strong>
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );
 }
 
-function ReferenceCard({
-  creating,
-  investment,
-  onCopyReference,
-  onCopyUrl,
-  onCreate,
-  plan,
-}: {
-  creating: boolean;
-  investment: InvestorInvestment | null;
-  onCopyReference: () => void;
-  onCopyUrl: () => void;
-  onCreate: () => void;
-  plan: InvestmentPlan;
-}) {
-  const reference = getInvestmentReference(investment);
-  const referenceMatchesSelection =
-    Boolean(reference && investment) &&
-    Number(investment?.amount) === plan.amount &&
-    investment?.package_name === plan.tier.name;
-  const activeReference = referenceMatchesSelection ? reference : null;
-
+function InfoTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Referencia de pagamento
-          </p>
-          <h2 className="mt-2 break-words text-2xl font-black text-slate-950">
-            {activeReference?.reference || `${getReferencePrefix(plan.tier.code)}-...`}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Pacote selecionado: {plan.tier.name} com valor de {formatKz(plan.amount)}.
-          </p>
-        </div>
-        <StatusPill tone={activeReference ? "orange" : "slate"}>
-          {activeReference ? statusText(activeReference.status) : "Selecao atual"}
-        </StatusPill>
-      </div>
-
-      {activeReference ? (
-        <div className="mt-5 grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Metric
-              detail="Entidade usada nas referencias Nawabus."
-              icon={<ReceiptText className="h-5 w-5" />}
-              label="Entidade"
-              value={activeReference.entity}
-            />
-            <Metric
-              detail={`Pacote ${plan.tier.name}.`}
-              icon={<Wallet className="h-5 w-5" />}
-              label="Valor"
-              value={formatKz(Number(activeReference.amount))}
-            />
-            <Metric
-              detail="Link publico para validar esta referencia."
-              icon={<ExternalLink className="h-5 w-5" />}
-              label="Link"
-              value="Ativo"
-            />
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-cyan-300"
-              onClick={onCopyReference}
-              type="button"
-            >
-              <Copy className="h-4 w-4" />
-              Copiar ref.
-            </button>
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-cyan-300"
-              onClick={onCopyUrl}
-              type="button"
-            >
-              <Copy className="h-4 w-4" />
-              Copiar link
-            </button>
-            <a
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800"
-              href={activeReference.reference_url}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Abrir
-            </a>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-5 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Metric
-              detail={`${formatPercent(plan.tier.guarantee * 100)} ao ano para este pacote.`}
-              icon={<ShieldCheck className="h-5 w-5" />}
-              label="Pacote"
-              value={plan.tier.name}
-            />
-            <Metric
-              detail="Valor usado para gerar a proxima referencia."
-              icon={<Wallet className="h-5 w-5" />}
-              label="Valor"
-              value={formatKz(plan.amount)}
-            />
-            <Metric
-              detail="Capital + rendimento dividido por 12 meses."
-              icon={<TrendingUp className="h-5 w-5" />}
-              label="Retorno mensal"
-              value={formatKz(plan.monthlyReturn)}
-            />
-          </div>
-          <p className="text-sm leading-6 text-slate-600">
-            Gere uma referencia para gravar esta selecao. Referencias anteriores
-            continuam guardadas no historico.
-          </p>
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800 disabled:opacity-60"
-            disabled={creating}
-            onClick={onCreate}
-            type="button"
-          >
-            {creating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <PlusCircle className="h-4 w-4" />
-            )}
-            Gerar referencia
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AccountPanel({ account }: { account: InvestorAccount }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Conta do investidor
-          </p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950">
-            {account.full_name}
-          </h2>
-        </div>
-        <StatusPill tone="green">{statusText(account.status)}</StatusPill>
-      </div>
-      <div className="mt-5 grid gap-3">
-        {[
-          ["Email", account.email],
-          ["Telefone", account.phone || "-"],
-          ["Documento", account.national_id || "-"],
-          ["Banco", account.bank_name || "-"],
-          ["IBAN", account.iban || "-"],
-        ].map(([label, value]) => (
-          <div
-            className="rounded-lg border border-slate-200 bg-slate-50 p-3"
-            key={label}
-          >
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-              {label}
-            </p>
-            <p className="mt-1 break-words text-sm font-black text-slate-950">
-              {value}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function InvestmentsTable({
-  dataLoading,
-  investments,
-  onCopy,
-}: {
-  dataLoading: boolean;
-  investments: InvestorInvestment[];
-  onCopy: (value: string) => void;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Historico
-          </p>
-          <h2 className="mt-2 text-xl font-black text-slate-950">
-            Investimentos iniciados
-          </h2>
-        </div>
-        {dataLoading ? <Loader2 className="h-5 w-5 animate-spin text-orange-600" /> : null}
-      </div>
-      <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Pacote</th>
-              <th className="px-4 py-3">Valor</th>
-              <th className="px-4 py-3">Referencia</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Acao</th>
-            </tr>
-          </thead>
-          <tbody>
-            {investments.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>
-                  Ainda nao existe investimento iniciado.
-                </td>
-              </tr>
-            ) : (
-              investments.map((investment) => {
-                const reference = getInvestmentReference(investment);
-                return (
-                  <tr className="border-t border-slate-200" key={investment.id}>
-                    <td className="px-4 py-3 font-black">{investment.package_name}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {formatKz(Number(investment.amount))}
-                    </td>
-                    <td className="px-4 py-3 font-black text-slate-950">
-                      {reference?.reference || "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill tone={reference?.status === "completed" ? "green" : "orange"}>
-                        {statusText(reference?.status || investment.status)}
-                      </StatusPill>
-                    </td>
-                    <td className="px-4 py-3">
-                      {reference ? (
-                        <button
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-black text-slate-700 transition hover:border-cyan-300"
-                          onClick={() => onCopy(reference.reference_url)}
-                          type="button"
-                        >
-                          <Copy className="h-4 w-4" />
-                          Link
-                        </button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function Simulator({
-  plan,
-  setAmount,
-}: {
-  plan: InvestmentPlan;
-  setAmount: (amount: number) => void;
-}) {
-  const [draftAmount, setDraftAmount] = useState(String(plan.amount));
-  const selectedPackage = plan.tier.name;
-  const draftNumeric = Number(draftAmount);
-  const draftIsValid =
-    draftAmount.length > 0 &&
-    Number.isFinite(draftNumeric) &&
-    draftNumeric >= MIN_INVESTMENT &&
-    draftNumeric <= BUS_PRICE;
-
-  function commitAmount(value = draftAmount) {
-    const nextAmount = normalizeInvestment(Number(value));
-    setAmount(nextAmount);
-    setDraftAmount(String(nextAmount));
-  }
-
-  function updateDraft(value: string) {
-    const digits = value.replace(/\D/g, "");
-    setDraftAmount(digits);
-
-    const nextAmount = Number(digits);
-    if (nextAmount >= MIN_INVESTMENT && nextAmount <= BUS_PRICE) {
-      setAmount(normalizeInvestment(nextAmount));
-    }
-  }
-
-  function selectPackage(tier: InvestmentTier) {
-    const nextAmount = normalizeInvestment(tier.min);
-    setAmount(nextAmount);
-    setDraftAmount(String(nextAmount));
-  }
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Escolha o pacote
-          </p>
-          <h2 className="mt-2 text-xl font-black text-slate-950">
-            Selecione e invista
-          </h2>
-        </div>
-        <SlidersHorizontal className="h-5 w-5 text-orange-600" />
-      </div>
-
-      <div className="mt-5 grid gap-2">
-        {investmentTiers.map((tier) => {
-          const isSelected = selectedPackage === tier.name;
-          const range =
-            tier.min === tier.max
-              ? formatKz(tier.min)
-              : `${formatKz(tier.min)} - ${formatKz(tier.max)}`;
-          const monthlyReturn = calculateInvestmentPlan(tier.min).monthlyReturn;
-
-          return (
-            <button
-              className={`grid min-h-24 gap-3 rounded-lg border p-4 text-left transition sm:grid-cols-[1fr_auto] sm:items-center ${
-                isSelected
-                  ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-950/15"
-                  : "border-slate-200 bg-white text-slate-950 hover:border-cyan-300 hover:bg-slate-50"
-              }`}
-              key={tier.name}
-              onClick={() => selectPackage(tier)}
-              type="button"
-            >
-              <span>
-                <span className="block text-base font-black">{tier.name}</span>
-                <span
-                  className={`mt-1 block text-xs font-bold leading-5 ${
-                    isSelected ? "text-slate-300" : "text-slate-500"
-                  }`}
-                >
-                  {range}
-                </span>
-                <span
-                  className={`mt-2 block text-xs leading-5 ${
-                    isSelected ? "text-cyan-100" : "text-slate-600"
-                  }`}
-                >
-                  Desde {formatKz(monthlyReturn)} por mes.
-                </span>
-              </span>
-              <span
-                className={`inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-black ${
-                  isSelected ? "bg-cyan-300 text-slate-950" : "bg-orange-50 text-orange-700"
-                }`}
-              >
-                {formatPercent(tier.guarantee * 100)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <label className="mt-5 block text-sm font-bold text-slate-700">
-        Valor exato do pacote
-        <div className="mt-2 flex gap-2">
-          <input
-            className={`h-12 min-w-0 flex-1 rounded-lg border px-4 text-lg font-black outline-none transition focus:ring-4 ${
-              draftIsValid
-                ? "border-slate-200 focus:border-cyan-400 focus:ring-cyan-300/20"
-                : "border-orange-300 focus:border-orange-400 focus:ring-orange-200/40"
-            }`}
-            inputMode="numeric"
-            onBlur={() => commitAmount()}
-            onChange={(event) => updateDraft(event.target.value)}
-            onFocus={(event) => {
-              event.target.select();
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                commitAmount();
-              }
-            }}
-            placeholder={String(MIN_INVESTMENT)}
-            type="text"
-            value={draftAmount}
-          />
-          <button
-            className="h-12 rounded-lg bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800"
-            onClick={() => commitAmount()}
-            type="button"
-          >
-            Aplicar
-          </button>
-        </div>
-      </label>
-      <p className="mt-2 text-xs font-bold text-slate-500">
-        Minimo {formatKz(MIN_INVESTMENT)}. Maximo {formatKz(BUS_PRICE)}. O
-        valor pode ser ajustado depois de escolher o pacote.
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+        {label}
       </p>
-      <input
-        aria-label="Capital a investir"
-        className="mt-5 h-2 w-full accent-orange-500"
-        max={BUS_PRICE}
-        min={MIN_INVESTMENT}
-        onChange={(event) => {
-          const nextAmount = normalizeInvestment(Number(event.target.value));
-          setAmount(nextAmount);
-          setDraftAmount(String(nextAmount));
-        }}
-        step={INVESTMENT_STEP}
-        type="range"
-        value={plan.amount}
-      />
-      <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-              Pacote atual
-            </p>
-            <p className="mt-1 text-xl font-black text-slate-950">
-              {plan.tier.name}
-            </p>
-          </div>
-          <StatusPill tone="blue">{plan.tier.model}</StatusPill>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs font-bold text-slate-500">Retorno mensal</p>
-            <p className="mt-1 text-sm font-black text-slate-950">
-              {formatKz(plan.monthlyReturn)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-500">Taxa anual</p>
-            <p className="mt-1 text-sm font-black text-slate-950">
-              {formatPercent(plan.tier.guarantee * 100)} ao ano
-            </p>
-          </div>
-        </div>
-        <p className="text-sm leading-6 text-slate-600">{plan.tier.benefit}</p>
-      </div>
-      <div className="mt-5 rounded-lg bg-slate-950 p-4 text-white">
-        <p className="text-sm leading-6 text-slate-300">
-          Com <strong className="text-white">{formatKz(plan.amount)}</strong>,
-          o investidor recebe cerca de{" "}
-          <strong className="text-cyan-200">{formatKz(plan.monthlyReturn)}</strong>{" "}
-          por mes durante 12 meses. O rendimento mensal estimado e{" "}
-          <strong className="text-cyan-200">
-            {formatKz(plan.monthlyMinimumReturn)}
-          </strong>.
-        </p>
-      </div>
+      <p className="mt-2 text-lg font-black text-slate-950">{value}</p>
     </div>
   );
 }
-
-function ReturnsChart({
-  monthlyReturn,
-  selectedMonth,
-  setSelectedMonth,
-}: {
-  monthlyReturn: number;
-  selectedMonth: string;
-  setSelectedMonth: (month: string) => void;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Ganhos mensais
-          </p>
-          <h2 className="mt-2 text-xl font-black text-slate-950">
-            Ano 1 do investimento demo
-          </h2>
-        </div>
-        <StatusPill tone="green">5 meses pagos</StatusPill>
-      </div>
-
-      <div className="mt-6 flex h-64 items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 pb-3 pt-4 sm:gap-3">
-        {monthlyReturns.map((item) => {
-          const isSelected = selectedMonth === item.month;
-          return (
-            <button
-              className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2"
-              key={item.month}
-              onClick={() => setSelectedMonth(item.month)}
-              type="button"
-            >
-              <span
-                className={`w-full rounded-t-md transition duration-300 ${
-                  item.status === "Pago" ? "bg-orange-500" : "bg-cyan-300"
-                } ${isSelected ? "opacity-100 ring-2 ring-slate-950/20" : "opacity-75 group-hover:opacity-100"}`}
-                style={{ height: `${item.pulse}%` }}
-                title={`${item.month}: ${formatKz(monthlyReturn)}`}
-              />
-              <span
-                className={`text-xs font-black ${
-                  isSelected ? "text-slate-950" : "text-slate-500"
-                }`}
-              >
-                {item.month}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function PaymentsTable({ monthlyReturn }: { monthlyReturn: number }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-        Proximos pagamentos
-      </p>
-      <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Mes</th>
-              <th className="px-4 py-3">Valor</th>
-              <th className="px-4 py-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {monthlyReturns.slice(4, 10).map((item) => (
-              <tr className="border-t border-slate-200" key={item.month}>
-                <td className="px-4 py-3 font-black">{item.month}</td>
-                <td className="px-4 py-3 text-slate-600">
-                  {formatKz(monthlyReturn)}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusPill tone={item.status === "Pago" ? "green" : "orange"}>
-                    {item.status}
-                  </StatusPill>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function ActivityFeed() {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/5">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-        Atividade recente
-      </p>
-      <div className="mt-5 grid gap-3">
-        {investorActivity.map((activity) => (
-          <div
-            className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 transition hover:border-cyan-200 hover:bg-white"
-            key={activity.title}
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-orange-600 shadow-sm shadow-slate-950/5">
-              <ReceiptText className="h-5 w-5" />
-            </span>
-            <span>
-              <span className="block text-sm font-black text-slate-950">
-                {activity.title}
-              </span>
-              <span className="mt-1 block text-xs text-slate-500">
-                {activity.detail}
-              </span>
-            </span>
-            <span className="text-xs font-black text-slate-400">
-              {activity.time}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const [view, setView] = useState<"landing" | "dashboard">("landing");
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [session, setSession] = useState<InvestorSession | null>(null);
-
-  function openAuth(mode: AuthMode) {
-    setAuthMode(mode);
-    window.requestAnimationFrame(() => {
-      document.getElementById("entrar")?.scrollIntoView({ behavior: "smooth" });
-    });
-  }
-
-  function completeAuth(nextSession: InvestorSession) {
-    setSession(nextSession);
-    setView("dashboard");
-    window.localStorage.setItem("clubInvestorSession", JSON.stringify(nextSession));
-  }
 
   function logout() {
     setSession(null);
     setView("landing");
     window.localStorage.removeItem("clubInvestorSession");
+  }
+
+  function completeLogin(nextSession: InvestorSession) {
+    setSession(nextSession);
+    setView("dashboard");
+    window.localStorage.setItem("clubInvestorSession", JSON.stringify(nextSession));
   }
 
   useEffect(() => {
@@ -2468,12 +1594,8 @@ export default function Home() {
 
   return (
     <>
-      <Landing onAuthOpen={openAuth} />
-      <AuthPanel
-        mode={authMode}
-        onComplete={completeAuth}
-        onModeChange={setAuthMode}
-      />
+      <Landing />
+      <LoginSection onComplete={completeLogin} />
     </>
   );
 }

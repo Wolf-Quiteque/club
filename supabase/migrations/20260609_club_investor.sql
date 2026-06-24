@@ -40,9 +40,9 @@ INSERT INTO public.club_investor_packages (
   benefit,
   sort_order
 ) VALUES
-  ('plano21', 'Plano 21', 1000000, 24999999, 0.21, 'Retorno mensal', '21% ao ano, pago mensalmente durante 12 meses.', 1),
-  ('plano23', 'Plano 23', 25000000, 74999999, 0.23, 'Retorno mensal', '23% ao ano, pago mensalmente durante 12 meses.', 2),
-  ('plano25', 'Plano 25', 75000000, 125000000, 0.25, 'Retorno mensal', '25% ao ano, pago mensalmente durante 12 meses.', 3)
+  ('prata', 'Prata', 1000000, 24999999, 0.21, 'Retorno mensal', '21% ao ano, pago mensalmente durante 12 meses.', 1),
+  ('ouro', 'Ouro', 25000000, 74999999, 0.23, 'Retorno mensal', '23% ao ano, pago mensalmente durante 12 meses.', 2),
+  ('diamante', 'Diamante', 75000000, 125000000, 0.25, 'Retorno mensal', '25% ao ano, pago mensalmente durante 12 meses.', 3)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   min_amount = EXCLUDED.min_amount,
@@ -59,12 +59,20 @@ CREATE TABLE IF NOT EXISTS public.club_investments (
   package_code text NOT NULL REFERENCES public.club_investor_packages(code),
   package_name text NOT NULL,
   amount numeric(14,2) NOT NULL CHECK (amount >= 1000000),
+  deposit_bank_name text,
+  deposit_bank_account text,
+  deposit_bank_iban text,
   quota numeric(12,8) NOT NULL CHECK (quota > 0),
   monthly_net_profit numeric(14,2) NOT NULL,
   expected_monthly_return numeric(14,2) NOT NULL,
   expected_annual_return numeric(14,2) NOT NULL,
   minimum_annual_return numeric(14,2) NOT NULL,
   guarantee_rate numeric(6,5) NOT NULL,
+  proof_file_name text,
+  proof_file_type text,
+  proof_file_size integer,
+  proof_file_data_url text,
+  proof_uploaded_at timestamptz,
   asset_code text NOT NULL DEFAULT 'NB-2026-014',
   route_label text NOT NULL DEFAULT 'Luanda-Huambo',
   status text NOT NULL DEFAULT 'pending_payment'
@@ -72,6 +80,16 @@ CREATE TABLE IF NOT EXISTS public.club_investments (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.club_investments
+  ADD COLUMN IF NOT EXISTS deposit_bank_name text,
+  ADD COLUMN IF NOT EXISTS deposit_bank_account text,
+  ADD COLUMN IF NOT EXISTS deposit_bank_iban text,
+  ADD COLUMN IF NOT EXISTS proof_file_name text,
+  ADD COLUMN IF NOT EXISTS proof_file_type text,
+  ADD COLUMN IF NOT EXISTS proof_file_size integer,
+  ADD COLUMN IF NOT EXISTS proof_file_data_url text,
+  ADD COLUMN IF NOT EXISTS proof_uploaded_at timestamptz;
 
 CREATE TABLE IF NOT EXISTS public.club_investment_references (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -96,6 +114,9 @@ CREATE INDEX IF NOT EXISTS idx_club_investments_account_id
 
 CREATE INDEX IF NOT EXISTS idx_club_investments_auth_user_id
   ON public.club_investments(auth_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_club_investments_status
+  ON public.club_investments(status);
 
 CREATE INDEX IF NOT EXISTS idx_club_investment_references_reference
   ON public.club_investment_references(reference);

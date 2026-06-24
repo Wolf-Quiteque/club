@@ -1,8 +1,6 @@
-import { randomInt } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   calculateInvestmentPlan,
-  getReferencePrefix,
   normalizeInvestment,
 } from "@/lib/investor";
 import {
@@ -16,38 +14,14 @@ export const runtime = "nodejs";
 
 type CreateInvestmentBody = {
   amount?: number;
+  depositBankAccount?: string;
+  depositBankIban?: string;
+  depositBankName?: string;
+  proofFileDataUrl?: string;
+  proofFileName?: string;
+  proofFileSize?: number;
+  proofFileType?: string;
 };
-
-function getReferenceUrl(request: Request, reference: string) {
-  const origin = new URL(request.url).origin;
-  return `${origin}/referencias/${encodeURIComponent(reference)}`;
-}
-
-function makeReference(packageCode: string) {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const suffix = String(randomInt(100000, 999999));
-  return `${getReferencePrefix(packageCode)}-${today}-${suffix}`;
-}
-
-async function getUniqueReference(
-  supabase: ReturnType<typeof createSupabaseAdminClient>,
-  packageCode: string,
-) {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const reference = makeReference(packageCode);
-    const { data } = await supabase
-      .from("club_investment_references")
-      .select("id")
-      .eq("reference", reference)
-      .maybeSingle();
-
-    if (!data) {
-      return reference;
-    }
-  }
-
-  throw new Error("Nao foi possivel gerar uma referencia unica.");
-}
 
 async function getInvestorAccount(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
@@ -97,8 +71,22 @@ async function listInvestments(
     .from("club_investments")
     .select(
       `
-      *,
-      reference:club_investment_references(*)
+      id,
+      amount,
+      created_at,
+      deposit_bank_account,
+      deposit_bank_iban,
+      deposit_bank_name,
+      expected_annual_return,
+      expected_monthly_return,
+      minimum_annual_return,
+      package_code,
+      package_name,
+      proof_file_name,
+      proof_file_size,
+      proof_file_type,
+      proof_uploaded_at,
+      status
     `,
     )
     .eq("account_id", accountId)
@@ -155,6 +143,28 @@ export async function POST(request: Request) {
     const body = (await request.json()) as CreateInvestmentBody;
     const amount = normalizeInvestment(Number(body.amount));
     const plan = calculateInvestmentPlan(amount);
+
+    if (!body.depositBankName || !body.depositBankAccount || !body.depositBankIban) {
+      return NextResponse.json(
+        { error: "Escolha a conta bancaria usada no deposito." },
+        { status: 400 },
+      );
+    }
+
+    if (!body.proofFileName || !body.proofFileDataUrl) {
+      return NextResponse.json(
+        { error: "Envie o comprovativo da transferencia." },
+        { status: 400 },
+      );
+    }
+
+    if (body.proofFileDataUrl.length > 7_000_000) {
+      return NextResponse.json(
+        { error: "O comprovativo e demasiado grande. Use um ficheiro ate 5 MB." },
+        { status: 400 },
+      );
+    }
+
     const supabase = createSupabaseAdminClient();
     const account = await getInvestorAccount(
       supabase,
@@ -169,6 +179,9 @@ export async function POST(request: Request) {
         amount: plan.amount,
         asset_code: "NB-2026-014",
         auth_user_id: auth.user.id,
+        deposit_bank_account: body.depositBankAccount,
+        deposit_bank_iban: body.depositBankIban,
+        deposit_bank_name: body.depositBankName,
         expected_annual_return: plan.annualReturn,
         expected_monthly_return: plan.monthlyReturn,
         guarantee_rate: plan.tier.guarantee,
@@ -176,9 +189,14 @@ export async function POST(request: Request) {
         monthly_net_profit: plan.monthlyNetProfit,
         package_code: plan.tier.code,
         package_name: plan.tier.name,
+        proof_file_data_url: body.proofFileDataUrl,
+        proof_file_name: body.proofFileName,
+        proof_file_size: body.proofFileSize || null,
+        proof_file_type: body.proofFileType || "application/octet-stream",
+        proof_uploaded_at: new Date().toISOString(),
         quota: plan.quota,
         route_label: "Luanda-Huambo",
-        status: "pending_payment",
+        status: "under_review",
       })
       .select()
       .single();
@@ -190,40 +208,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const reference = await getUniqueReference(supabase, plan.tier.code);
-    const referenceUrl = getReferenceUrl(request, reference);
-    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-
-    const { data: paymentReference, error: referenceError } = await supabase
-      .from("club_investment_references")
-      .insert({
-        amount: plan.amount,
-        currency: "AOA",
-        entity: "1219",
-        expires_at: expiresAt,
-        investment_id: investment.id,
-        reference,
-        reference_url: referenceUrl,
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    if (referenceError || !paymentReference) {
-      await supabase.from("club_investments").delete().eq("id", investment.id);
-      return NextResponse.json(
-        { error: referenceError?.message || "Nao foi possivel criar a referencia." },
-        { status: 500 },
-      );
-    }
-
     return NextResponse.json(
       {
         account,
-        investment: {
-          ...investment,
-          reference: paymentReference,
-        },
+        investment,
       },
       { status: 201 },
     );
