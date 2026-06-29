@@ -60,6 +60,43 @@ const investmentTiers = [
   },
 ];
 
+const tierVisuals: Record<
+  string,
+  {
+    badgeClass: string;
+    buttonClass: string;
+    buttonSelectedClass: string;
+    cardClass: string;
+    iconClass: string;
+    labelClass: string;
+  }
+> = {
+  prata: {
+    badgeClass: "tier-badge tier-badge-prata",
+    buttonClass: "tier-select-button tier-select-prata",
+    buttonSelectedClass: "tier-select-button tier-select-prata tier-select-active",
+    cardClass: "tier-card tier-card-prata",
+    iconClass: "tier-icon tier-icon-prata",
+    labelClass: "tier-label tier-label-prata",
+  },
+  ouro: {
+    badgeClass: "tier-badge tier-badge-ouro",
+    buttonClass: "tier-select-button tier-select-ouro",
+    buttonSelectedClass: "tier-select-button tier-select-ouro tier-select-active",
+    cardClass: "tier-card tier-card-ouro",
+    iconClass: "tier-icon tier-icon-ouro",
+    labelClass: "tier-label tier-label-ouro",
+  },
+  diamante: {
+    badgeClass: "tier-badge tier-badge-diamante",
+    buttonClass: "tier-select-button tier-select-diamante",
+    buttonSelectedClass: "tier-select-button tier-select-diamante tier-select-active",
+    cardClass: "tier-card tier-card-diamante",
+    iconClass: "tier-icon tier-icon-diamante",
+    labelClass: "tier-label tier-label-diamante",
+  },
+};
+
 type InvestmentTier = (typeof investmentTiers)[number];
 type InvestmentPlan = {
   amount: number;
@@ -533,6 +570,7 @@ function TierLadder() {
         <div className="mt-8 grid gap-3 lg:grid-cols-3">
           {investmentTiers.map((tier) => {
             const expectedMonthly = calculateInvestmentPlan(tier.min).monthlyReturn;
+            const visual = tierVisuals[tier.code];
             const range =
               tier.min === tier.max
                 ? formatKz(tier.min)
@@ -540,19 +578,20 @@ function TierLadder() {
 
             return (
               <div
-                className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-950/5 transition hover:-translate-y-1 hover:border-cyan-200"
+                className={visual.cardClass}
                 key={tier.name}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                    <span className={visual.iconClass} aria-hidden="true" />
+                    <p className={visual.labelClass}>
                       Plano
                     </p>
                     <p className="mt-1 text-xl font-black text-slate-950">
                       {tier.name}
                     </p>
                   </div>
-                  <span className="rounded-lg bg-orange-50 px-2 py-1 text-xs font-black text-orange-700">
+                  <span className={visual.badgeClass}>
                     {formatPercent(tier.guarantee * 100)}
                   </span>
                 </div>
@@ -1349,13 +1388,12 @@ function Dashboard({
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {investmentTiers.map((tier) => {
               const isSelected = plan.tier.name === tier.name;
+              const visual = tierVisuals[tier.code];
               return (
                 <button
-                  className={`rounded-lg border p-4 text-left transition ${
-                    isSelected
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-200 bg-white text-slate-950"
-                  }`}
+                  className={
+                    isSelected ? visual.buttonSelectedClass : visual.buttonClass
+                  }
                   key={tier.name}
                   onClick={() => {
                     const nextAmount = normalizeInvestment(tier.min);
