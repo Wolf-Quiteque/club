@@ -29,6 +29,8 @@ const MIN_MONTHLY_NET_PROFIT = 1000000;
 const MAX_MONTHLY_NET_PROFIT = 10000000;
 const MONTHLY_NET_PROFIT_STEP = 250000;
 const RETURN_PERIOD_MONTHS = 12;
+const SITE_PASSCODE = "010126";
+const SITE_ACCESS_STORAGE_KEY = "clubInvestorSiteAccess";
 
 const investmentTiers = [
   {
@@ -552,6 +554,117 @@ function ProductPreview() {
   );
 }
 
+function SiteLock({ onUnlock }: { onUnlock: () => void }) {
+  const [passcode, setPasscode] = useState("");
+  const [error, setError] = useState("");
+  const [pointer, setPointer] = useState({ x: 50, y: 38 });
+
+  function submitPasscode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedPasscode = passcode.replace(/\D/g, "");
+
+    if (normalizedPasscode !== SITE_PASSCODE) {
+      setError("Codigo incorreto. Confirme o passcode e tente novamente.");
+      setPasscode("");
+      return;
+    }
+
+    window.localStorage.setItem(SITE_ACCESS_STORAGE_KEY, "granted");
+    onUnlock();
+  }
+
+  return (
+    <main
+      className="lock-access-shell relative flex min-h-screen overflow-hidden bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8"
+      onPointerMove={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setPointer({
+          x: ((event.clientX - rect.left) / rect.width) * 100,
+          y: ((event.clientY - rect.top) / rect.height) * 100,
+        });
+      }}
+      style={
+        {
+          "--lock-x": `${pointer.x}%`,
+          "--lock-y": `${pointer.y}%`,
+        } as React.CSSProperties
+      }
+    >
+      <div className="absolute inset-0 lock-grid opacity-70" />
+      <div className="absolute inset-0 lock-scan opacity-80" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--lock-x)_var(--lock-y),rgba(103,232,249,0.20),transparent_28%),linear-gradient(120deg,rgba(2,6,23,0.96),rgba(15,23,42,0.84)_48%,rgba(249,115,22,0.20))]" />
+
+      <section className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center">
+        <div className="grid gap-8 lg:grid-cols-[1fr_27rem] lg:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-lg border border-cyan-200/30 bg-cyan-200/10 px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-cyan-100 backdrop-blur-xl">
+              <Zap className="h-4 w-4" />
+              Acesso privado
+            </div>
+            <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[0.98] tracking-tight text-white sm:text-7xl">
+              Club de investidor Nawabus
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
+              Introduza o passcode para abrir a experiencia privada do clube.
+            </p>
+          </div>
+
+          <form
+            className="relative overflow-hidden rounded-lg border border-white/16 bg-white/10 p-5 shadow-2xl shadow-cyan-950/40 backdrop-blur-2xl"
+            onSubmit={submitPasscode}
+          >
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-300 via-orange-400 to-cyan-300" />
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100/80">
+                  Terminal seguro
+                </p>
+                <p className="mt-2 text-2xl font-black text-white">Passcode</p>
+              </div>
+              <span className="flex h-12 w-12 items-center justify-center rounded-lg border border-cyan-200/25 bg-cyan-200/10 text-cyan-100">
+                <LockKeyhole className="h-5 w-5" />
+              </span>
+            </div>
+
+            <label className="mt-6 block text-sm font-bold text-slate-200">
+              Codigo de entrada
+              <input
+                autoComplete="one-time-code"
+                autoFocus
+                className="mt-2 h-14 w-full rounded-lg border border-white/15 bg-slate-950/75 px-4 text-center font-mono text-2xl font-black tracking-[0.35em] text-cyan-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-300 focus:ring-4 focus:ring-cyan-300/20"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={(event) => {
+                  setPasscode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                  setError("");
+                }}
+                placeholder="000000"
+                type="password"
+                value={passcode}
+              />
+            </label>
+
+            {error ? (
+              <p className="mt-4 rounded-lg border border-orange-300/25 bg-orange-500/12 p-3 text-sm font-bold text-orange-100">
+                {error}
+              </p>
+            ) : null}
+
+            <button
+              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-5 text-sm font-black text-slate-950 shadow-lg shadow-cyan-300/20 transition hover:bg-cyan-200 focus:outline-none focus:ring-4 focus:ring-cyan-300/30"
+              type="submit"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Entra
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function TierLadder() {
   return (
     <section className="px-4 pb-18 sm:px-6 lg:px-8">
@@ -1056,16 +1169,29 @@ function LoginSection({
 }: {
   onComplete: (session: InvestorSession) => void;
 }) {
+  const [mode, setMode] = useState<"login" | "create">("login");
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
+  const [createForm, setCreateForm] = useState({
+    bankName: "",
+    confirmPassword: "",
+    email: "",
+    fullName: "",
+    iban: "",
+    nationalId: "",
+    password: "",
+    phone: "",
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState("");
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
@@ -1092,6 +1218,70 @@ function LoginSection({
     }
   }
 
+  async function submitCreateAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (createForm.password !== createForm.confirmPassword) {
+      setError("As palavras-passe nao coincidem.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const accountResponse = await fetch("/api/investor/accounts", {
+        body: JSON.stringify({
+          bankName: createForm.bankName,
+          email: createForm.email,
+          fullName: createForm.fullName,
+          iban: createForm.iban,
+          nationalId: createForm.nationalId,
+          password: createForm.password,
+          phone: createForm.phone,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const accountResult = await accountResponse.json();
+
+      if (!accountResponse.ok) {
+        throw new Error(accountResult.error || "Nao foi possivel abrir a conta.");
+      }
+
+      const sessionResponse = await fetch("/api/investor/session", {
+        body: JSON.stringify({
+          email: createForm.email,
+          password: createForm.password,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const sessionResult = await sessionResponse.json();
+
+      if (!sessionResponse.ok) {
+        setMode("login");
+        setForm({
+          email: createForm.email,
+          password: "",
+        });
+        setSuccess("Conta criada. Entre com o email e palavra-passe que acabou de definir.");
+        return;
+      }
+
+      onComplete(sessionResult);
+    } catch (createError) {
+      setError(
+        createError instanceof Error
+          ? createError.message
+          : "Nao foi possivel abrir a conta.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <section
       className="border-t border-slate-200 bg-slate-50 px-4 py-20 sm:px-6 lg:px-8"
@@ -1103,77 +1293,267 @@ function LoginSection({
             Clube privado
           </p>
           <h2 className="mt-4 max-w-2xl text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
-            Login para investidores aprovados.
+            Entre no portal ou abra a sua conta.
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
-            As contas sao abertas pela Nawabus para pessoas selecionadas. Se ja
-            recebeu acesso, entre com o email e palavra-passe fornecidos.
+            Crie uma conta para escolher um pacote, enviar o comprovativo e
+            acompanhar o processo de investimento.
           </p>
         </div>
 
-        <form
-          className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/10"
-          onSubmit={submitLogin}
-        >
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Acesso ao portal
-          </p>
-          <label className="mt-5 block text-sm font-bold text-slate-700">
-            Email
-            <input
-              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-              onChange={(event) =>
-                setForm((current) => ({ ...current, email: event.target.value }))
-              }
-              placeholder="email@exemplo.com"
-              required
-              type="email"
-              value={form.email}
-            />
-          </label>
-          <label className="mt-4 block text-sm font-bold text-slate-700">
-            Palavra-passe
-            <input
-              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
-              minLength={6}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  password: event.target.value,
-                }))
-              }
-              placeholder="Minimo 6 caracteres"
-              required
-              type="password"
-              value={form.password}
-            />
-          </label>
+        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-950/10">
+          <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+            {[
+              ["login", "Entrar"],
+              ["create", "Abrir conta"],
+            ].map(([key, label]) => (
+              <button
+                className={`h-10 rounded-md text-sm font-black transition ${
+                  mode === key
+                    ? "bg-slate-950 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-950"
+                }`}
+                key={key}
+                onClick={() => {
+                  setMode(key as "login" | "create");
+                  setError("");
+                  setSuccess("");
+                }}
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-          {error ? (
-            <p className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-800">
-              {error}
-            </p>
-          ) : null}
+          {mode === "login" ? (
+            <form onSubmit={submitLogin}>
+              <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                Acesso ao portal
+              </p>
+              <label className="mt-5 block text-sm font-bold text-slate-700">
+                Email
+                <input
+                  className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, email: event.target.value }))
+                  }
+                  placeholder="email@exemplo.com"
+                  required
+                  type="email"
+                  value={form.email}
+                />
+              </label>
+              <label className="mt-4 block text-sm font-bold text-slate-700">
+                Palavra-passe
+                <input
+                  className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                  minLength={6}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      password: event.target.value,
+                    }))
+                  }
+                  placeholder="Minimo 6 caracteres"
+                  required
+                  type="password"
+                  value={form.password}
+                />
+              </label>
 
-          <ActionButton
-            className="mt-6 w-full"
-            disabled={loading}
-            icon={
-              loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <LockKeyhole className="h-4 w-4" />
-              )
-            }
-            tone="dark"
-            type="submit"
-          >
-            Entrar no portal
-          </ActionButton>
-          <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-            Sem abertura publica de conta. Acesso apenas por convite.
-          </p>
-        </form>
+              {success ? (
+                <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">
+                  {success}
+                </p>
+              ) : null}
+
+              {error ? (
+                <p className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-800">
+                  {error}
+                </p>
+              ) : null}
+
+              <ActionButton
+                className="mt-6 w-full"
+                disabled={loading}
+                icon={
+                  loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LockKeyhole className="h-4 w-4" />
+                  )
+                }
+                tone="dark"
+                type="submit"
+              >
+                Entrar no portal
+              </ActionButton>
+            </form>
+          ) : (
+            <form onSubmit={submitCreateAccount}>
+              <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                Nova conta de investidor
+              </p>
+              <label className="mt-5 block text-sm font-bold text-slate-700">
+                Nome completo
+                <input
+                  className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      fullName: event.target.value,
+                    }))
+                  }
+                  placeholder="Nome do investidor"
+                  required
+                  type="text"
+                  value={createForm.fullName}
+                />
+              </label>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-bold text-slate-700">
+                  Email
+                  <input
+                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    placeholder="email@exemplo.com"
+                    required
+                    type="email"
+                    value={createForm.email}
+                  />
+                </label>
+                <label className="block text-sm font-bold text-slate-700">
+                  Telefone
+                  <input
+                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                    inputMode="tel"
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        phone: event.target.value,
+                      }))
+                    }
+                    placeholder="9xx xxx xxx"
+                    required
+                    type="tel"
+                    value={createForm.phone}
+                  />
+                </label>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-bold text-slate-700">
+                  Palavra-passe
+                  <input
+                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                    minLength={6}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        password: event.target.value,
+                      }))
+                    }
+                    placeholder="Minimo 6 caracteres"
+                    required
+                    type="password"
+                    value={createForm.password}
+                  />
+                </label>
+                <label className="block text-sm font-bold text-slate-700">
+                  Confirmar
+                  <input
+                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                    minLength={6}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        confirmPassword: event.target.value,
+                      }))
+                    }
+                    placeholder="Repetir palavra-passe"
+                    required
+                    type="password"
+                    value={createForm.confirmPassword}
+                  />
+                </label>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-bold text-slate-700">
+                  BI/NIF
+                  <input
+                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        nationalId: event.target.value,
+                      }))
+                    }
+                    placeholder="Opcional"
+                    type="text"
+                    value={createForm.nationalId}
+                  />
+                </label>
+                <label className="block text-sm font-bold text-slate-700">
+                  Banco
+                  <input
+                    className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                    onChange={(event) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        bankName: event.target.value,
+                      }))
+                    }
+                    placeholder="Opcional"
+                    type="text"
+                    value={createForm.bankName}
+                  />
+                </label>
+              </div>
+              <label className="mt-4 block text-sm font-bold text-slate-700">
+                IBAN para recebimentos
+                <input
+                  className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-300/20"
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      iban: event.target.value,
+                    }))
+                  }
+                  placeholder="Opcional"
+                  type="text"
+                  value={createForm.iban}
+                />
+              </label>
+
+              {error ? (
+                <p className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-800">
+                  {error}
+                </p>
+              ) : null}
+
+              <ActionButton
+                className="mt-6 w-full"
+                disabled={loading}
+                icon={
+                  loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-4 w-4" />
+                  )
+                }
+                tone="dark"
+                type="submit"
+              >
+                Abrir conta
+              </ActionButton>
+            </form>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -1592,7 +1972,7 @@ function InfoTile({ label, value }: { label: string; value: string }) {
   );
 }
 export default function Home() {
-  const [view, setView] = useState<"landing" | "dashboard">("landing");
+  const [view, setView] = useState<"locked" | "landing" | "dashboard">("locked");
   const [session, setSession] = useState<InvestorSession | null>(null);
 
   function logout() {
@@ -1607,9 +1987,40 @@ export default function Home() {
     window.localStorage.setItem("clubInvestorSession", JSON.stringify(nextSession));
   }
 
-  useEffect(() => {
+  function openUnlockedSite() {
     const stored = window.localStorage.getItem("clubInvestorSession");
     if (!stored) {
+      setView("landing");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as InvestorSession;
+      if (parsed.accessToken && parsed.account) {
+        setSession(parsed);
+        setView("dashboard");
+        return;
+      }
+    } catch {
+      window.localStorage.removeItem("clubInvestorSession");
+    }
+
+    setView("landing");
+  }
+
+  useEffect(() => {
+    const hasSiteAccess =
+      window.localStorage.getItem(SITE_ACCESS_STORAGE_KEY) === "granted";
+
+    if (!hasSiteAccess) {
+      return;
+    }
+
+    const stored = window.localStorage.getItem("clubInvestorSession");
+    if (!stored) {
+      queueMicrotask(() => {
+        setView("landing");
+      });
       return;
     }
 
@@ -1620,11 +2031,22 @@ export default function Home() {
           setSession(parsed);
           setView("dashboard");
         });
+      } else {
+        queueMicrotask(() => {
+          setView("landing");
+        });
       }
     } catch {
       window.localStorage.removeItem("clubInvestorSession");
+      queueMicrotask(() => {
+        setView("landing");
+      });
     }
   }, []);
+
+  if (view === "locked") {
+    return <SiteLock onUnlock={openUnlockedSite} />;
+  }
 
   if (view === "dashboard" && session) {
     return <Dashboard onLogout={logout} session={session} />;

@@ -50,6 +50,34 @@ button:disabled {
   color: var(--brand-ink);
 }
 
+.lock-access-shell {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(103, 232, 249, 0.16), transparent 34%),
+    #020617;
+}
+
+.lock-grid {
+  background-image:
+    linear-gradient(rgba(103, 232, 249, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent 82%);
+  animation: lockGridDrift 10s linear infinite;
+}
+
+.lock-scan {
+  background:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(103, 232, 249, 0.08) 48%,
+      rgba(249, 115, 22, 0.12) 50%,
+      transparent 54%
+    );
+  background-size: 100% 220px;
+  animation: lockScan 4.5s ease-in-out infinite;
+}
+
 .tier-card,
 .tier-select-button {
   position: relative;
@@ -270,6 +298,29 @@ button:disabled {
 
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes lockGridDrift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+
+  to {
+    background-position: 48px 48px, 48px 48px;
+  }
+}
+
+@keyframes lockScan {
+  0%,
+  100% {
+    background-position: 0 -220px;
+    opacity: 0.45;
+  }
+
+  50% {
+    background-position: 0 100vh;
+    opacity: 0.9;
   }
 }
 
