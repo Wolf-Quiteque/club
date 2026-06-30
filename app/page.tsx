@@ -30,7 +30,6 @@ const MAX_MONTHLY_NET_PROFIT = 10000000;
 const MONTHLY_NET_PROFIT_STEP = 250000;
 const RETURN_PERIOD_MONTHS = 12;
 const SITE_PASSCODE = "010126";
-const SITE_ACCESS_STORAGE_KEY = "clubInvestorSiteAccess";
 
 const investmentTiers = [
   {
@@ -569,7 +568,6 @@ function SiteLock({ onUnlock }: { onUnlock: () => void }) {
       return;
     }
 
-    window.localStorage.setItem(SITE_ACCESS_STORAGE_KEY, "granted");
     onUnlock();
   }
 
@@ -2009,18 +2007,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const hasSiteAccess =
-      window.localStorage.getItem(SITE_ACCESS_STORAGE_KEY) === "granted";
-
-    if (!hasSiteAccess) {
-      return;
-    }
-
     const stored = window.localStorage.getItem("clubInvestorSession");
     if (!stored) {
-      queueMicrotask(() => {
-        setView("landing");
-      });
       return;
     }
 
@@ -2029,18 +2017,10 @@ export default function Home() {
       if (parsed.accessToken && parsed.account) {
         queueMicrotask(() => {
           setSession(parsed);
-          setView("dashboard");
-        });
-      } else {
-        queueMicrotask(() => {
-          setView("landing");
         });
       }
     } catch {
       window.localStorage.removeItem("clubInvestorSession");
-      queueMicrotask(() => {
-        setView("landing");
-      });
     }
   }, []);
 
